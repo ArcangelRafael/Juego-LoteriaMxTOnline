@@ -169,7 +169,14 @@ function renderizarTablillasCallback(t) {
             }
             grid.appendChild(divC); 
         });
-        divTab.addEventListener('click', () => { if (state.miRol === 'jugador' && !tab.bloqueadaPor) socket.emit('ver_tablilla', { nombreSala: state.miSalaActual, idTablilla: tab.id }); });
+
+        // Usamos pointerdown en lugar de click para la selección táctil y de mouse
+        divTab.addEventListener('pointerdown', (e) => { 
+            e.preventDefault();
+            if (state.miRol === 'jugador' && !tab.bloqueadaPor) {
+                socket.emit('ver_tablilla', { nombreSala: state.miSalaActual, idTablilla: tab.id }); 
+            }
+        });
         cont.appendChild(divTab);
     });
 }
@@ -477,14 +484,59 @@ socket.on('nueva_carta', (carta) => {
         if(texto) texto.textContent = carta;
     }
     
-    // Aquí continúa tu lógica normal de tsLlegada...
+    // Lógica para registrar el tiempo de llegada e iluminar
     state.ultimaCartaRecibida = numCarta;
-    state.tsLlegadaCarta = Date.now();
-    document.querySelectorAll('.carta').forEach(el => {
-        if (el.dataset.numero === numCarta && !el.classList.contains('marcada')) {
-            if (state.configSala.ayudaNinos) el.classList.add('marcable-visual');
-        }
-    });
+    const tsLlegada = Date.now();
+    state.tsLlegadaCarta = tsLlegada;
+    
+    // Iluminación para espectadores
+    if (state.miRol === 'espectador') {
+        document.querySelectorAll('#contenedorEspectador .carta').forEach(div => {
+            if (div.dataset.numero === numCarta && !div.classList.contains('marcada')) {
+                div.classList.add('marcable-visual'); 
+                setTimeout(() => div.classList.remove('marcable-visual'), state.configSala.tiempoMarcar);
+            }
+        });
+    }
+
+    // LÓGICA DE MARCADO RECUPERADA PARA JUGADORES
+    if (state.miRol === 'jugador') {
+        document.querySelectorAll('#contenedorTablillas .carta').forEach(div => {
+            if (div.dataset.numero === numCarta && !div.classList.contains('marcada')) {
+                div.dataset.activa = "true"; 
+                div.style.cursor = "pointer";
+                if (state.configSala.ayudaNinos) div.classList.add('marcable-visual');
+
+                const t = setTimeout(() => { 
+                    div.dataset.activa = "false"; 
+                    div.style.cursor = "default"; 
+                    div.classList.remove('marcable-visual'); 
+                }, state.configSala.tiempoMarcar);
+                
+                // Asignamos onpointerdown para registrar toques instantáneos en celular y clics en PC
+                div.onpointerdown = function(e) {
+                    e.preventDefault(); // Evita scroll o zoom accidental al tocar
+                    if (div.dataset.activa === "true" && !div.classList.contains('marcada')) {
+                        const msReaccion = Date.now() - tsLlegada;
+                        clearTimeout(t); 
+                        div.dataset.activa = "false"; 
+                        div.classList.remove('marcable-visual'); 
+                        div.style.cursor = "default"; 
+                        
+                        // Añade la palomita sin borrar tu imagen
+                        div.classList.add('marcada'); 
+                        div.innerHTML += '<div class="palomita">✔</div>';
+                        
+                        state.misCartasMarcadas++;
+                        if(state.misCartasMarcadas === 16) document.getElementById('btnLoteria').disabled = false;
+                        
+                        // Emite el evento al servidor
+                        socket.emit('marcar_casilla', { nombreSala: state.miSalaActual, carta: carta, ms: msReaccion });
+                    }
+                };
+            }
+        });
+    }
 });
 
 socket.on('casilla_marcada', (d) => {
@@ -492,7 +544,7 @@ socket.on('casilla_marcada', (d) => {
     const divTab = document.getElementById(`tablilla-espectador-${d.idJugador}`);
     if (divTab) {
         divTab.querySelectorAll('.carta').forEach(divC => {
-            if (divC.dataset.numero === d.carta.split(' ')[1] && !divC.classList.contains('marcada')) { // <-- Actualizado
+            if (divC.dataset.numero === d.carta.split(' ')[1] && !divC.classList.contains('marcada')) { 
                 divC.classList.add('marcada'); divC.innerHTML += '<div class="palomita">✔</div>';
             }
         });
@@ -560,7 +612,6 @@ socket.on('regreso_al_lobby_exitoso', () => {
     if(cajasListas) cajasListas.classList.remove('oculto-juego');
     if(panelConfig) panelConfig.classList.remove('oculto-juego');
     
-    // Dentro de regreso_al_lobby_exitoso, busca la zona de restaurar:
     if(columnaHerramientas) columnaHerramientas.style.display = 'flex';
     if(chat) chat.style.display = 'flex';
     if(chat && columnaHerramientas) {
@@ -572,7 +623,6 @@ socket.on('regreso_al_lobby_exitoso', () => {
     document.getElementById('nombreTiempoReal').disabled = false;
     document.getElementById('panelEspectadorUI').style.display = 'none'; 
     
-    // AQUÍ ESTÁ LA LÍNEA PROTEGIDA:
     const tituloEsp = document.getElementById('tituloEspectando');
     if(tituloEsp) tituloEsp.style.display = 'none';
     
