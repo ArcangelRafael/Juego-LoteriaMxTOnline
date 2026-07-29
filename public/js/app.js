@@ -61,8 +61,8 @@ document.getElementById('inputFoto').addEventListener('change', (e) => {
 
 document.getElementById('nombreTiempoReal').addEventListener('input', (e) => socket.emit('escribiendo_nombre', { nombreSala: state.miSalaActual, nuevoNombre: e.target.value }));
 document.getElementById('btnCambiarRol').addEventListener('click', () => socket.emit('cambiar_rol', { nombreSala: state.miSalaActual, nuevoRol: state.miRol === 'jugador' ? 'espectador' : 'jugador' }));
-document.getElementById('btnBloquear').addEventListener('click', () => socket.emit('bloquear_tablilla', state.miSalaActual));
-document.getElementById('btnDesbloquear').addEventListener('click', () => socket.emit('desbloquear_tablilla', state.miSalaActual));
+document.getElementById('btnBloquear').addEventListener('pointerdown', (e) => { e.stopPropagation(); socket.emit('bloquear_tablilla', state.miSalaActual); });
+document.getElementById('btnDesbloquear').addEventListener('pointerdown', (e) => { e.stopPropagation(); socket.emit('desbloquear_tablilla', state.miSalaActual); });
 document.getElementById('btnAgregarBot').addEventListener('click', () => {
     const nBot = document.getElementById('nombreBotInput').value;
     socket.emit('agregar_bot', { nombreSala: state.miSalaActual, nombreBot: nBot });
