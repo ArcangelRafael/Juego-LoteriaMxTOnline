@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Lotería Online</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div id="notificacionFlotante" class="notificacion-flotante"></div>
+
+    <!-- Modales -->
+    <div id="modalError" class="modal-overlay">
+        <div class="modal-caja">
+            <h2 style="color: red;" id="tituloModalError">Aviso</h2>
+            <p id="textoModalError" style="font-size: 18px; margin-bottom: 20px;"></p>
+            <button class="btn-no" id="btnCerrarError">CERRAR</button>
+        </div>
+    </div>
+
+    <div id="modalExpulsar" class="modal-overlay">
+        <div class="modal-caja">
+            <h2 style="color: red;">Expulsar Jugador</h2>
+            <p>¿Estás seguro de eliminar a <b id="nombreExpulsarUI"></b>?</p>
+            <div style="margin-top: 20px;">
+                <button class="btn-si" id="btnConfirmarExpulsion">SÍ, ELIMINAR</button>
+                <button class="btn-no" id="btnCancelarExpulsion">CANCELAR</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalVotacion" class="modal-overlay">
+        <div class="modal-caja">
+            <img id="fotoGanadorModal" src="" class="foto-ganador-oro" style="display:none;">
+            <h1 style="color: gold; text-shadow: 1px 1px black;">¡Lotería de <span id="nombreGanadorModal"></span>!</h1>
+            <h2 id="textoPreguntaVotacion">¿Deseas continuar con la partida?</h2>
+            <h3 style="color: red;">Tiempo restante: <span id="tiempoVotacion">15</span>s</h3>
+            <div id="botonesVotacion">
+                <button class="btn-si" id="btnVotoSi">SÍ, CONTINUAR</button>
+                <button class="btn-no" id="btnVotoNo">NO, TERMINAR</button>
+            </div>
+            <p id="mensajeEsperaVotacion" style="display:none;">Esperando a que los demás voten...</p>
+        </div>
+    </div>
+
+    <div id="modalSinCartas" class="modal-overlay">
+        <div class="modal-caja">
+            <h2 style="color: red;">¡Vaya! Se acabaron las cartas y nadie terminó.</h2>
+            <p>Son muy lentos, intenten poner ayuda para niños o hacerlo más lento.</p>
+            <h3 style="color: darkorange;">Tiempo restante: <span id="tiempoSinCartas">15</span>s</h3>
+            <div id="botonesSinCartas">
+                <button class="btn-si" id="btnVotoRevolver">REVOLVER DE NUEVO LAS CARTAS (Sí)</button>
+            </div>
+            <p id="msgEsperaRevolver" style="display:none;">Esperando a los demás...</p>
+        </div>
+    </div>
+
+    <div id="modalAFK" class="modal-overlay">
+        <div class="modal-caja">
+            <h2 style="color: orange;">¡Atención! Jugadores Ausentes</h2>
+            <p>La partida iniciará sin: <b id="listaNombresAFK"></b>.</p>
+            <p>Están AFK. Si entran volverán como espectadores.</p>
+            <div style="margin-top: 20px;">
+                <button class="btn-si" id="btnIniciarForzadoAFK">ENTENDIDO (Iniciar)</button>
+                <button class="btn-no" id="btnCancelarAFK">ESPERARLO</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MENU PRINCIPAL (EXPLORADOR) -->
+    <div id="pantallaMenu" class="seccion activa menu-principal-container">
+        <h1 style="font-size: 3em; margin-bottom: 10px;">Lotería Multijugador</h1>
+        <p style="color: #666; margin-bottom: 30px;">Juega con amigos o practica contra máquinas</p>
+        
+        <div class="menu-opciones">
+            <button id="btnPartidaRapida" style="background-color: gold; font-size: 20px; padding: 15px 30px; border: 2px solid darkgoldenrod; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">🔥 SOLITARIO / RÁPIDA</button>
+            <button id="btnMenuAnfitrion" style="background-color: #28a745; color: white;">Crear Sala</button>
+            <button id="btnMenuUnirse" style="background-color: #17a2b8; color: white;">Unirse con Código</button>
+        </div>
+        
+        <div id="formAnfitrion" style="display:none; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; max-width: 400px;">
+            <h3>Crear Nueva Sala</h3>
+            <input type="text" id="crearNombreSala" placeholder="Nombre de la Sala" style="padding:8px; width:calc(100% - 20px); margin-bottom: 10px;"> <br>
+            <label style="display:block; margin-bottom: 15px;"><input type="checkbox" id="checkSalaPrivada"> Sala Privada (Oculta del buscador)</label>
+            <button id="btnCrearSala" style="background: #28a745; color: white; width: 100%;">Crear y Entrar</button>
+        </div>
+        
+        <div id="formUnirse" style="display:none; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; max-width: 400px;">
+            <h3>Unirse a Sala Privada</h3>
+            <input type="text" id="unirNombreSala" placeholder="Nombre de la Sala" style="padding:8px; width:calc(100% - 20px); margin-bottom: 10px;"> 
+            <input type="text" id="unirCodigoSala" placeholder="Código de 4 letras" style="padding:8px; width:calc(100% - 20px); margin-bottom: 10px;">
+            <div style="margin: 10px 0; text-align: left;">
+                <label><input type="radio" name="rolIngreso" value="jugador" checked> Entrar como Jugador</label><br>
+                <label><input type="radio" name="rolIngreso" value="espectador"> Entrar como Espectador</label>
+            </div>
+            <button id="btnUnirseSala" style="background: #17a2b8; color: white; width: 100%;">Conectar</button>
+        </div>
+
+        <div id="exploradorSalas" style="margin-top: 40px; text-align: left;">
+            <h3 style="border-bottom: 2px solid #eee; padding-bottom: 10px;">🌐 Salas Públicas Disponibles</h3>
+            <table class="tabla-salas">
+                <thead><tr><th>Sala</th><th>Anfitrión</th><th>Jugadores</th><th>Acción</th></tr></thead>
+                <tbody id="listaSalasPublicasUI">
+                    <tr><td colspan="4" style="text-align: center; color: #888;">Buscando salas...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- LOBBY & JUEGO -->
+    <div id="pantallaLobby" class="seccion">
+        <h2 id="tituloSala"></h2>
+        <h3 id="codigoSalaTexto"></h3>
+        
+        <div class="controles-superior">
+            <input type="text" id="nombreTiempoReal" placeholder="Escribe tu nombre aquí...">
+            <label class="input-foto-label">
+                📷 Subir Foto
+                <input type="file" id="inputFoto" accept="image/*" style="display:none;">
+            </label>
+            <button id="btnCambiarRol">Cambiar a Espectador</button>
+            <button id="btnIniciar" style="display:none; background-color: lightgreen;" disabled>¡Iniciar Lotería!</button>
+            
+            <!-- NUEVO: Temporizador de Inactividad -->
+            <div id="relojInactividad" style="display:none; color: #dc3545; font-weight: bold; padding: 8px 12px; border-radius: 5px; background: #f8d7da; border: 1px solid #f5c6cb;">
+                ⏳ Se cierra en: <span id="tiempoInactividadUI">03:00</span>
+            </div>
+        </div>
+
+        <div class="contenedor-principal">
+            <div class="columna-listas" id="cajasListas">
+                <div class="caja-lista" id="cajaJugadores">
+                    <h3>Jugadores: <span id="contadorJugadores">0/8</span> <span id="etiquetaHost" style="color:blue; font-size:12px; display:none;">(Eres Anfitrión)</span></h3>
+                    <ul id="listaJugadoresUI"></ul>
+                    <div id="controlesBot" style="display:none; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 10px;">
+                        <input type="text" id="nombreBotInput" placeholder="Nombre Bot (Opcional)" style="width:140px; padding:5px; border:1px solid #ccc; border-radius:3px;">
+                        <button id="btnAgregarBot" style="padding: 5px 10px; font-size:12px; background:#6c757d; color:white;">+ Agregar Máquina</button>
+                    </div>
+                </div>
+                <div class="caja-lista" id="cajaEspectadores">
+                    <h3>Espectadores: <span id="contadorEspectadores">0/4</span></h3>
+                    <ul id="listaEspectadoresUI"></ul>
+                </div>
+            </div>
+
+            <div class="columna-herramientas" id="herramientasSala">
+                <div class="panel-configuracion" id="panelConfiguracion">
+                    <h4>Ajustes de Partida</h4>
+                    <label><input type="radio" name="velGriton" value="3" checked> Normal (3s carta / 5s marcar)</label><br>
+                    <label><input type="radio" name="velGriton" value="5"> Lento (5s carta / 6s marcar)</label><br>
+                    <label><input type="radio" name="velGriton" value="2"> Rápido (2s carta / 4s marcar)</label><br><br>
+                    <label><input type="checkbox" id="checkAyudaNinos"> Ayuda para niños (iluminar cartas)</label><br>
+                    <label><input type="checkbox" id="checkSinEspectadores"> <b>SIN ESPECTADORES</b></label>
+                </div>
+                
+                <div class="caja-chat" id="cajaChat">
+                    <h4 style="margin-top:0;">Chat de Sala</h4>
+                    <div class="chat-mensajes" id="chatMensajes"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chatInput" placeholder="Mensaje...">
+                        <button id="btnEnviarChat" style="background:#007bff; color:white; border:none;">Enviar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin: 15px 0;" id="botonesTablilla">
+            <button id="btnBloquear" style="display:none; background-color: lightgreen; font-size:16px;">Bloquear Tablilla</button>
+            <button id="btnDesbloquear" style="display:none; background-color: lightcoral; font-size:16px;">Soltar Tablilla</button>
+        </div>
+        
+        <button id="btnLoteria" disabled>¡¡ LOTERÍA !!</button>
+        <div id="cartaActual" style="font-size: 2.5em; font-weight: bold; margin-bottom: 20px; color: blue;">Esperando a que inicie el juego...</div>
+
+        <div id="panelEspectadorUI">
+            <h3 style="margin-top:0;">Mostrar juego de:</h3>
+            <label style="margin-right: 15px; font-weight:bold;"><input type="checkbox" id="checkTodos"> TODOS</label>
+            <span id="listaChecksJugadores"></span>
+        </div>
+
+        <div id="contenedorTablillas"></div>
+        <h3 id="tituloEspectando" style="display:none; border-bottom:2px solid #ccc; padding-bottom:10px;">Tablillas de otros jugadores:</h3>
+        <div id="contenedorEspectador"></div>
+    </div>
+
+    <!-- RESULTADOS FINALES -->
+    <div id="pantallaResultados" class="seccion" style="text-align: center;">
+        <h1 style="color: gold; font-size: 3em; text-shadow: 1px 1px 2px #000;">🏆 ¡FIN DEL JUEGO! 🏆</h1>
+        <div id="ganadorAbsolutoTexto"></div>
+        
+        <div style="background: white; padding: 30px; border-radius: 10px; display: inline-block; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+            <h3 style="border-bottom: 2px solid #eee; padding-bottom:10px;">Tabla de Posiciones:</h3>
+            <ul id="listaRankingFinal" class="ranking-lista"></ul>
+        </div>
+        <br>
+        <div class="caja-analisis" id="cajaAnalisisGlobal"></div>
+        <br><br>
+        <button id="btnVolverLobby" style="background: #28a745; color:white; font-size: 20px; padding: 15px 30px; border:none; box-shadow:0 4px 6px rgba(0,0,0,0.1);">VOLVER A JUGAR</button>
+        <button id="btnFinalizarPartida" style="background: #dc3545; color:white; font-size: 20px; padding: 15px 30px; border:none; box-shadow:0 4px 6px rgba(0,0,0,0.1); margin-left:10px;">FINALIZAR PARTIDA</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/js/app.js"></script>
+</body>
+</html>
