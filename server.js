@@ -18,7 +18,7 @@ io.on('connection', (socket) => {
 });
 
 // Reemplazar la última línea con esto:
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => { 
-    console.log(`[OK] Servidor corriendo en el puerto ${PORT}`); 
-}); 
+const PORT = process.env.PORT || 3000; // <--- Toma el puerto de Railway, o usa 3000 en local
+server.listen(PORT, '0.0.0.0', () => { // <--- El '0.0.0.0' asegura que escuche conexiones externas
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
+});

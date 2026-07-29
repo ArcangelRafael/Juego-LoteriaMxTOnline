@@ -1,3 +1,5 @@
+import { CARTAS_LOTERIA } from './cartas.js';
+
 // public/js/ui.js
 export function mostrarModalError(msg, callbackRecarga = null) {
     document.getElementById('textoModalError').textContent = msg;
@@ -70,21 +72,51 @@ export function actualizarListas(listas, state) {
 export function prepararInterfazJuego(state, contruirEspectadorCb) {
     state.juegoEnCurso = true;
     document.getElementById('btnIniciar').style.display = 'none';
-    document.getElementById('relojInactividad').style.display = 'none';
-    document.getElementById('botonesTablilla').style.display = 'none';
-    document.getElementById('btnCambiarRol').style.display = 'none';
-    document.getElementById('cajasListas').style.display = 'none';
-    document.getElementById('nombreTiempoReal').disabled = true;
-    document.getElementById('panelConfiguracion').classList.remove('es-host');
-    document.getElementById('controlesBot').style.display = 'none';
+    const reloj = document.getElementById('relojInactividad');
+    if(reloj) reloj.style.display = 'none';
+    const btnTablilla = document.getElementById('botonesTablilla');
+    if(btnTablilla) btnTablilla.style.display = 'none';
+    const btnRol = document.getElementById('btnCambiarRol');
+    if(btnRol) btnRol.style.display = 'none';
+    const inputNombre = document.getElementById('nombreTiempoReal');
+    if(inputNombre) inputNombre.disabled = true;
     
-    if(state.miRol === 'jugador') document.getElementById('btnLoteria').style.display = 'inline-block';
+    const header = document.querySelector('.header-sala');
+    const cajasListas = document.getElementById('cajasListas');
+    const panelConfig = document.getElementById('panelConfiguracion');
+    
+    if(header) header.classList.add('oculto-juego');
+    if(cajasListas) cajasListas.classList.add('oculto-juego');
+    if(panelConfig) panelConfig.classList.add('oculto-juego');
+
+    // Activar la Mesa Circular
+    document.getElementById('pantallaLobby').classList.add('mesa-activa');
+    
+    const tituloEsp = document.getElementById('tituloEspectando');
+    if(tituloEsp) tituloEsp.style.display = 'none';
+
+    setTimeout(() => {
+        const chat = document.getElementById('cajaChat');
+        const columnaHerramientas = document.getElementById('herramientasSala');
+        
+        if(chat) chat.style.display = 'none';
+        if(columnaHerramientas) columnaHerramientas.style.display = 'none';
+    }, 100);
+    
+    if(state.miRol === 'jugador') {
+        const btnLoteria = document.getElementById('btnLoteria');
+        if(btnLoteria) {
+            btnLoteria.style.display = 'inline-block';
+            document.getElementById('panelEspectadorUI').appendChild(btnLoteria);
+        }
+    }
     
     document.querySelectorAll('.tablilla').forEach(el => {
         if(!el.classList.contains('bloqueada-mia') && state.miRol === 'jugador') el.style.display = 'none';
         else if (state.miRol === 'espectador') el.style.display = 'none'; 
         else el.classList.remove('bloqueada-mia'); 
     });
+    
     contruirEspectadorCb();
 }
 
@@ -104,9 +136,31 @@ export function mostrarResultados(datos) {
     }
 
     const ul = document.getElementById('listaRankingFinal'); ul.innerHTML = '';
+    
     ranking.forEach((jugador, i) => {
-        const strPerdidas = jugador.perdidas.length > 0 ? `Sí, ${jugador.perdidas.join(', ')}` : 'NO';
+        let detallesCartas = '<p style="margin:5px 0; color:#94a3b8;">Se le fueron tarjetas: <b>NO</b></p>';
+        
+        // Verificar si existen cartas perdidas en el arreglo "perdidas"
+        if (jugador.perdidas && jugador.perdidas.length > 0) {
+            // Mapeamos el arreglo ['Carta 42', 'Carta 34'] para sacar los nombres reales
+            let listaBullets = jugador.perdidas.map(carta => {
+                let num = carta.split(' ')[1]; // Extrae el número después del espacio
+                let nombreReal = CARTAS_LOTERIA[num] ? CARTAS_LOTERIA[num].nombre : carta;
+                return `<li>${nombreReal}</li>`;
+            }).join(''); // Los unimos todos
+
+            detallesCartas = `
+                <div class="analisis-scroll">
+                    <p style="margin: 0 0 8px 0; color: #f87171; font-weight: 600;">Se le fueron tarjetas: Sí</p>
+                    <ul>
+                        ${listaBullets}
+                    </ul>
+                </div>
+            `;
+        }
+
         let imgH = jugador.foto ? `<img src="${jugador.foto}" class="foto-ranking">` : '';
+        
         ul.innerHTML += `
             <li>
                 <div style="display:flex; align-items:center; width:100%;">
@@ -116,7 +170,7 @@ export function mostrarResultados(datos) {
                 </div>
                 <details style="width:100%; box-sizing:border-box;">
                     <summary>Análisis</summary>
-                    <p style="margin:5px 0;">Se le fueron tarjetas: <b>${strPerdidas}</b></p>
+                    ${detallesCartas}
                 </details>
             </li>`;
     });
@@ -124,12 +178,12 @@ export function mostrarResultados(datos) {
     const cajaS = document.getElementById('cajaAnalisisGlobal');
     let msjRapido = stats.rapido.nombre ? `${stats.rapido.nombre} (${(stats.rapido.ms / 1000).toFixed(2)}s)` : "Nadie";
     let msjLento = stats.lento.nombre ? `${stats.lento.nombre} (${(stats.lento.ms / 1000).toFixed(2)}s)` : "Nadie";
-    let msjRobo = stats.robo && stats.robo.victimas.length > 0 ? `<p style="color:gold;">🥷 <b>Robo de victoria:</b> ${stats.robo.ganador} se la robó por reflejos a ${stats.robo.victimas.join(', ')}</p>` : '';
-    let msjDistraido = stats.distraido && stats.distraido.nombre ? `<p style="color:coral;">😴 <b>Más distraído:</b> ${stats.distraido.nombre} (se le pasaron ${stats.distraido.cantidad} cartas)</p>` : '';
+    let msjRobo = stats.robo && stats.robo.victimas.length > 0 ? `<p style="color:gold;"><b>Robo de victoria:</b> ${stats.robo.ganador} se la robó por reflejos a ${stats.robo.victimas.join(', ')}</p>` : '';
+    let msjDistraido = stats.distraido && stats.distraido.nombre ? `<p style="color:coral;"><b>Más distraído:</b> ${stats.distraido.nombre} (se le pasaron ${stats.distraido.cantidad} cartas)</p>` : '';
 
     cajaS.innerHTML = `<h3>Análisis General de la Partida</h3>
-        <p>⚡ El click más rápido fue de: <b>${msjRapido}</b></p>
-        <p>🐢 El click más lento fue de: <b>${msjLento}</b></p>
+        <p>El click más rápido fue de: <b>${msjRapido}</b></p>
+        <p>El click más lento fue de: <b>${msjLento}</b></p>
         ${msjRobo}
         ${msjDistraido}`;
 }

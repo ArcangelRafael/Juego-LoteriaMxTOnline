@@ -5,6 +5,12 @@ import * as ui from './ui.js';
 
 const socket = io();
 state.socketId = socket.id;
+const TEXTO_LOBBY = `
+    <div style="display:flex; flex-direction:column; align-items:center; gap: 10px;">
+        <span>Selección y bloqueo de tablillas</span>
+        <span style="font-size: 16px; font-weight: normal; color: var(--text-muted);">Selecciona la tablilla de tu agrado y bloquéala antes que alguien más te la gane.</span>
+    </div>
+`;
 
 // ==========================================
 // 1. EVENTOS DEL DOM (Cero 'onclick' en HTML)
@@ -63,6 +69,32 @@ document.getElementById('btnAgregarBot').addEventListener('click', () => {
     document.getElementById('nombreBotInput').value = "";
 });
 
+// NUEVO: Lógica del chat con "Enter" IN-GAME
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && state.juegoEnCurso && state.miRol === 'jugador') {
+        const cont = document.getElementById('chatIngameContenedor');
+        const input = document.getElementById('chatIngameInput');
+        
+        if (cont.style.display === 'none') {
+            // Mostrar input flotante y ponerle focus
+            const miFoto = state.estadoJugadores[socket.id]?.foto;
+            const imgEl = document.getElementById('chatIngameFoto');
+            imgEl.src = miFoto || '';
+            imgEl.style.display = miFoto ? 'block' : 'none';
+            
+            cont.style.display = 'flex';
+            input.focus();
+        } else {
+            // Enviar mensaje y ocultar
+            if (input.value.trim() !== '') {
+                socket.emit('enviar_mensaje', { nombreSala: state.miSalaActual, mensaje: input.value });
+                input.value = '';
+            }
+            cont.style.display = 'none';
+        }
+    }
+});
+
 // Chat
 const enviarMsjChat = () => {
     const input = document.getElementById('chatInput');
@@ -104,28 +136,37 @@ document.getElementById('btnVotoRevolver').addEventListener('click', () => { doc
 // 2. LÓGICA DE DIBUJO COMPLEJA (Callbacks)
 // ==========================================
 function renderizarTablillasCallback(t) {
+    // 1. Rescatamos el contenedor de botones antes de limpiar el HTML
+    const contBotones = document.getElementById('botonesTablilla');
+    if (contBotones && contBotones.parentNode !== document.body) {
+        document.body.appendChild(contBotones); 
+        contBotones.style.display = 'none';
+    }
+
     const cont = document.getElementById('contenedorTablillas'); cont.innerHTML = ''; 
     t.forEach(tab => {
         const divTab = document.createElement('div'); divTab.className = 'tablilla';
+        divTab.id = 'tablilla-dom-' + tab.id; // <-- ID ÚNICO
+        
         if (tab.bloqueadaPor) { if (tab.bloqueadaPor === socket.id) divTab.classList.add('bloqueada-mia'); else divTab.classList.add('bloqueada-otros'); } 
         else if (tab.viendoPor.length > 0) { if (tab.viendoPor.includes(socket.id)) divTab.classList.add('viendo-mia'); else divTab.classList.add('viendo-otros'); }
+        
         divTab.innerHTML = `<h4>Tablilla ${tab.id}</h4><div class="grid-cartas"></div>`;
         const grid = divTab.querySelector('.grid-cartas');
+        
         tab.cartas.forEach(c => { 
             const divC = document.createElement('div'); 
             divC.className = 'carta'; 
             
-            const numCarta = c.split(' ')[1]; // Sacamos el número
-            divC.dataset.numero = numCarta; // <-- Asignamos el data-attribute
+            const numCarta = c.split(' ')[1];
+            divC.dataset.numero = numCarta;
             const infoCarta = CARTAS_LOTERIA[numCarta];
 
-            // Si tienes la imagen en el diccionario, la pinta, sino pone el número por default
             if (infoCarta) {
                 divC.innerHTML = `<img src="${infoCarta.img}" alt="${infoCarta.nombre}" style="width:100%; height:100%; object-fit:cover; border-radius:3px;">`;
             } else {
                 divC.textContent = numCarta; 
             }
-            
             grid.appendChild(divC); 
         });
         divTab.addEventListener('click', () => { if (state.miRol === 'jugador' && !tab.bloqueadaPor) socket.emit('ver_tablilla', { nombreSala: state.miSalaActual, idTablilla: tab.id }); });
@@ -134,9 +175,15 @@ function renderizarTablillasCallback(t) {
 }
 
 function construirPanelEspectadorCb() {
-    document.getElementById('panelEspectadorUI').style.display = 'block'; document.getElementById('tituloEspectando').style.display = 'block';
+    document.getElementById('panelEspectadorUI').style.display = 'block'; 
     const contChecks = document.getElementById('listaChecksJugadores'); contChecks.innerHTML = '';
-    for (const id in state.estadoJugadores) if (id !== socket.id) contChecks.innerHTML += `<label style="margin-right:15px;"><input type="checkbox" class="check-jugador" value="${id}"> ${state.estadoJugadores[id].nombre || 'Anónimo'}</label>`;
+    
+    for (const id in state.estadoJugadores) {
+        if (id !== socket.id) {
+            contChecks.innerHTML += `<label class="checkbox-label"><input type="checkbox" class="check-jugador" value="${id}"> ${state.estadoJugadores[id].nombre || 'Anónimo'}</label>`;
+        }
+    }
+    
     const cTodos = document.getElementById('checkTodos'); const cInd = document.querySelectorAll('.check-jugador');
     cTodos.addEventListener('change', (e) => { cInd.forEach(c => c.checked = e.target.checked); renderTabEspectadoresCb(); });
     cInd.forEach(c => c.addEventListener('change', () => { if(!c.checked) cTodos.checked = false; renderTabEspectadoresCb(); }));
@@ -144,32 +191,91 @@ function construirPanelEspectadorCb() {
 
 function renderTabEspectadoresCb() {
     const cont = document.getElementById('contenedorEspectador'); cont.innerHTML = '';
-    document.querySelectorAll('.check-jugador:checked').forEach(chk => {
-        const id = chk.value; const d = state.estadoJugadores[id];
-        const divTab = document.createElement('div'); divTab.className = 'tablilla'; divTab.id = `tablilla-espectador-${id}`;
+    const checks = document.querySelectorAll('.check-jugador:checked');
+    const checkedIds = Array.from(checks).map(c => c.value);
+    
+    // 1. SISTEMA DE ASIENTOS FIJOS
+    // Obtenemos todos los IDs ordenados alfabéticamente (mismo orden para todos)
+    const allIds = Object.keys(state.estadoJugadores).sort();
+    
+    // Buscamos nuestra posición en la mesa
+    let myIndex = allIds.indexOf(socket.id);
+    if (myIndex === -1) myIndex = 0; // Respaldo si solo somos espectadores
+    
+    // Generamos el anillo de asientos alrededor nuestro
+    const orderedOtherIds = [];
+    for (let i = 1; i < allIds.length; i++) {
+        const idx = (myIndex + i) % allIds.length;
+        orderedOtherIds.push(allIds[idx]);
+    }
+    const totalAsientos = orderedOtherIds.length;
+
+    // 2. DIBUJAR TABLILLAS
+    checkedIds.forEach((id) => {
+        const d = state.estadoJugadores[id];
+        if(!d) return;
+
+        // Buscamos qué asiento fijo le corresponde a este jugador
+        const asientoIndex = orderedOtherIds.indexOf(id);
+
+        const divTab = document.createElement('div'); 
+        divTab.className = 'tablilla tablilla-enemiga';
+        divTab.id = `tablilla-espectador-${id}`;
+        
         let img = d.foto ? `<img src="${d.foto}" class="foto-perfil">` : '';
         divTab.innerHTML = `<h4>Juego de: ${d.nombre} ${img}</h4><div class="grid-cartas"></div>`;
         const grid = divTab.querySelector('.grid-cartas');
+        
         d.cartas.forEach(c => {
-            const divC = document.createElement('div'); 
-            divC.className = 'carta'; 
-            
-            const numCarta = c.split(' ')[1];
-            divC.dataset.numero = numCarta; // <-- Asignamos el data-attribute
+            const divC = document.createElement('div'); divC.className = 'carta'; 
+            const numCarta = c.split(' ')[1]; divC.dataset.numero = numCarta;
             const infoCarta = CARTAS_LOTERIA[numCarta];
 
-            if (infoCarta) {
-                divC.innerHTML = `<img src="${infoCarta.img}" style="width:100%; height:100%; object-fit:cover; border-radius:3px;">`;
-            } else {
-                divC.textContent = numCarta;
-            }
+            if (infoCarta) divC.innerHTML = `<img src="${infoCarta.img}" style="width:100%; height:100%; object-fit:cover; border-radius:3px;">`;
+            else divC.textContent = numCarta;
 
-            if(d.marcas.includes(c)) { 
-                divC.classList.add('marcada'); 
-                divC.innerHTML += '<div class="palomita">✔</div>'; 
-            }
+            if(d.marcas.includes(c)) { divC.classList.add('marcada'); divC.innerHTML += '<div class="palomita">✔</div>'; }
             grid.appendChild(divC);
         });
+
+        // 3. POSICIONAMIENTO Y ROTACIÓN (Extremos más bajos)
+        if (state.juegoEnCurso) {
+            let angle;
+            
+            if (totalAsientos === 1) {
+                angle = Math.PI * 1.1; 
+            } else {
+                const mitadIzquierda = Math.ceil(totalAsientos / 2);
+                const mitadDerecha = totalAsientos - mitadIzquierda;
+                
+                if (asientoIndex < mitadIzquierda) {
+                    // Flanco Izquierdo: Nace más abajo (0.75 PI) y sube hasta (1.3 PI)
+                    const step = mitadIzquierda > 1 ? (Math.PI * 1.3 - Math.PI * 0.75) / (mitadIzquierda - 1) : 0;
+                    angle = Math.PI * 0.75 + (step * asientoIndex);
+                } else {
+                    // Flanco Derecho: Nace arriba (1.7 PI) y baja hasta (2.25 PI)
+                    const idxDer = asientoIndex - mitadIzquierda;
+                    const step = mitadDerecha > 1 ? (Math.PI * 2.25 - Math.PI * 1.7) / (mitadDerecha - 1) : 0;
+                    angle = Math.PI * 1.7 + (step * idxDer);
+                }
+            }
+            
+            // Aumentamos los radios ligeramente para aprovechar el espacio extra
+            const radiusX = 44; 
+            const radiusY = 40; 
+            
+            divTab.style.left = `${50 + (radiusX * Math.cos(angle))}%`;
+            divTab.style.top = `${45 + (radiusY * Math.sin(angle))}%`; 
+            
+            const gradosRotacion = (angle * 180 / Math.PI) - 90;
+            divTab.style.setProperty('--rotacion', `${gradosRotacion}deg`);
+
+        } else {
+            divTab.style.position = 'relative'; 
+            divTab.style.transform = 'none';
+            divTab.style.setProperty('--rotacion', `0deg`);
+        }
+        
         cont.appendChild(divTab);
     });
 }
@@ -186,7 +292,51 @@ socket.on('sala_destruida_inactividad', (minutos) => {
     ui.mostrarModalError(`La sala fue cerrada por inactividad (${minutos} Minutos).`, () => window.location.reload());
 });
 
-socket.on('mensaje_chat', (datos) => ui.pintarMensajeChat(datos));
+socket.on('mensaje_chat', (datos) => {
+    ui.pintarMensajeChat(datos); // Mantiene el registro en el historial para cuando acabe el juego
+    
+    if (state.juegoEnCurso) {
+        // Buscamos a quién le pertenece el mensaje por su nombre
+        let senderId = null;
+        for (let id in state.estadoJugadores) {
+            if (state.estadoJugadores[id].nombre === datos.nombre) { 
+                senderId = id; 
+                break; 
+            }
+        }
+
+        if (senderId) {
+            let targetDiv = null;
+            if (senderId === socket.id) {
+                targetDiv = document.getElementById('contenedorTablillas'); // Mi propia tablilla central
+            } else {
+                targetDiv = document.getElementById(`tablilla-espectador-${senderId}`); // Enemigo
+            }
+
+            if (targetDiv) {
+                const burbuja = document.createElement('div');
+                burbuja.className = 'burbuja-chat';
+                
+                // Extraer la foto del usuario que envió el mensaje
+                const fotoUsuario = state.estadoJugadores[senderId]?.foto;
+                const imgHTML = fotoUsuario ? `<img src="${fotoUsuario}" class="burbuja-foto">` : '';
+                
+                // Inyectar el diseño con foto y texto
+                burbuja.innerHTML = `
+                    <div class="burbuja-chat-contenido">
+                        ${imgHTML}
+                        <span>${datos.mensaje}</span>
+                    </div>
+                `;
+                
+                targetDiv.appendChild(burbuja);
+
+                setTimeout(() => { if (burbuja.parentNode) burbuja.remove(); }, 5500);
+            }
+        }
+    }
+});
+
 socket.on('config_actualizada', (cfg) => { if(!state.soyAnfitrion) ui.actualizarUIConfig(cfg, state); });
 socket.on('confirmar_afk', (nombres) => { document.getElementById('listaNombresAFK').textContent = nombres.join(', '); document.getElementById('modalAFK').style.display = 'flex'; });
 socket.on('salida_exitosa', () => { window.location.reload(); });
@@ -213,7 +363,8 @@ socket.on('sala_unida', (d) => {
 
 socket.on('unido_como_espectador', (d) => { 
     state.juegoEnCurso = false; state.misCartasMarcadas = 0; document.getElementById('btnLoteria').disabled = true; document.getElementById('btnLoteria').style.display = 'none';
-    document.getElementById('cartaActual').textContent = 'Esperando a que inicie el juego...'; document.getElementById('cartaActual').style.color = "blue";
+    document.getElementById('cartaActual').innerHTML = TEXTO_LOBBY; 
+    document.getElementById('cartaActual').style.color = "";
     state.miRol = 'espectador'; state.soyAnfitrion = false; ui.actualizarUIConfig(d.config, state); state.estadoJugadores = d.infoJugadores; 
     ui.initLobby(state.miSalaActual, "Espectador", [], renderizarTablillasCallback); 
     ui.prepararInterfazJuego(state, construirPanelEspectadorCb); 
@@ -225,7 +376,7 @@ socket.on('rol_cambiado', (r) => {
     const cont = document.getElementById('contenedorTablillas');
     if (state.miRol === 'espectador') { cont.style.opacity = '0.5'; cont.style.pointerEvents = 'none'; } else { cont.style.opacity = '1'; cont.style.pointerEvents = 'auto'; }
     if (state.configSala.sinEspectadores) document.getElementById('btnCambiarRol').style.display = 'none';
-    document.getElementById('btnBloquear').style.display = 'none'; document.getElementById('btnDesbloquear').style.display = 'none';
+    document.getElementById('botonesTablilla').style.display = 'none'; // Ocultar botones
 });
 
 socket.on('actualizar_listas', (listas) => ui.actualizarListas(listas, state));
@@ -244,11 +395,27 @@ socket.on('nuevo_anfitrion', () => {
 socket.on('actualizar_tablillas', (t) => { 
     renderizarTablillasCallback(t); 
     
-    if (state.miRol === 'jugador') {
-        let viendo = false; let bloqueada = false;
-        t.forEach(tb => { if (tb.viendoPor.includes(socket.id)) viendo = true; if (tb.bloqueadaPor === socket.id) bloqueada = true; });
-        document.getElementById('btnBloquear').style.display = (viendo && !bloqueada) ? 'inline-block' : 'none';
-        document.getElementById('btnDesbloquear').style.display = bloqueada ? 'inline-block' : 'none';
+    if (state.miRol === 'jugador' && !state.juegoEnCurso) {
+        let viendo = false; let bloqueada = false; let idActiva = null;
+        t.forEach(tb => { 
+            if (tb.viendoPor.includes(socket.id)) { viendo = true; idActiva = tb.id; }
+            if (tb.bloqueadaPor === socket.id) { bloqueada = true; idActiva = tb.id; }
+        });
+        
+        const btnBloquear = document.getElementById('btnBloquear');
+        const btnDesbloquear = document.getElementById('btnDesbloquear');
+        const contBotones = document.getElementById('botonesTablilla');
+
+        // Mover los botones al interior de la tablilla seleccionada
+        if (idActiva) {
+            const tabNode = document.getElementById('tablilla-dom-' + idActiva);
+            if (tabNode) tabNode.appendChild(contBotones);
+            contBotones.style.display = 'flex';
+            btnBloquear.style.display = (viendo && !bloqueada) ? 'inline-block' : 'none';
+            btnDesbloquear.style.display = bloqueada ? 'inline-block' : 'none';
+        } else {
+            contBotones.style.display = 'none';
+        }
     }
 
     if (state.juegoEnCurso) {
@@ -256,6 +423,7 @@ socket.on('actualizar_tablillas', (t) => {
             if(!el.classList.contains('bloqueada-mia') && state.miRol === 'jugador') el.style.display = 'none';
             else if (state.miRol === 'espectador') el.style.display = 'none'; else el.classList.remove('bloqueada-mia'); 
         });
+        document.getElementById('botonesTablilla').style.display = 'none';
     }
 });
 
@@ -266,47 +434,57 @@ socket.on('actualizar_texto_carta', (texto) => { document.getElementById('cartaA
 socket.on('nueva_carta', (carta) => {
     const numCarta = carta.split(' ')[1];
     const infoCarta = CARTAS_LOTERIA[numCarta];
-
-    // Mostrar el nombre real y la foto en el gritón
-    if (infoCarta) {
-        document.getElementById('cartaActual').innerHTML = `
-            <img src="${infoCarta.img}" style="height: 120px; vertical-align: middle; border-radius: 10px; margin-right: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-            <span>¡${infoCarta.nombre}!</span>
-        `;
-    } else {
-        document.getElementById('cartaActual').textContent = carta;
-    }
-    const tsLlegada = Date.now();
     
-    if (state.miRol === 'espectador') {
-        document.querySelectorAll('#contenedorEspectador .carta').forEach(div => {
-            if (div.dataset.numero === numCarta && !div.classList.contains('marcada')) { // <-- Actualizado
-                div.classList.add('marcable-visual'); setTimeout(() => div.classList.remove('marcable-visual'), state.configSala.tiempoMarcar);
-            }
-        });
+    const cartaContenedor = document.getElementById('cartaActual');
+    let pila = document.getElementById('pilaCartasGriton');
+    let texto = document.getElementById('textoCartaGriton');
+
+    // Si es la primera carta del juego, construimos la "Mesa" del Gritón
+    if (!pila) {
+        cartaContenedor.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
+                <span id="textoCartaGriton" style="font-size: 1.4em; font-weight: 900; z-index: 310; text-shadow: 0 4px 15px rgba(0,0,0,0.8); background: rgba(15,23,42,0.85); padding: 8px 25px; border-radius: 12px; color: #38bdf8; border: 1px solid rgba(255,255,255,0.1);"></span>
+                <div id="pilaCartasGriton" style="position: relative; width: 220px; height: 310px;"></div>
+            </div>
+        `;
+        pila = document.getElementById('pilaCartasGriton');
+        texto = document.getElementById('textoCartaGriton');
     }
 
-    if (state.miRol === 'jugador') {
-        document.querySelectorAll('#contenedorTablillas .carta').forEach(div => {
-            if (div.dataset.numero === numCarta && !div.classList.contains('marcada')) { // <-- Actualizado
-                div.dataset.activa = "true"; div.style.cursor = "pointer";
-                if(state.configSala.ayudaNinos) div.classList.add('marcable-visual');
+    if (infoCarta) {
+        texto.textContent = `¡${infoCarta.nombre}!`;
 
-                const t = setTimeout(() => { div.dataset.activa = "false"; div.style.cursor = "default"; div.classList.remove('marcable-visual'); }, state.configSala.tiempoMarcar);
-                
-                div.onclick = function() {
-                    if (div.dataset.activa === "true" && !div.classList.contains('marcada')) {
-                        const msReaccion = Date.now() - tsLlegada;
-                        clearTimeout(t); div.dataset.activa = "false"; div.classList.remove('marcable-visual'); div.style.cursor = "default"; 
-                        div.classList.add('marcada'); div.innerHTML += '<div class="palomita">✔</div>';
-                        state.misCartasMarcadas++;
-                        if(state.misCartasMarcadas === 16) document.getElementById('btnLoteria').disabled = false;
-                        socket.emit('marcar_casilla', { nombreSala: state.miSalaActual, carta: carta, ms: msReaccion });
-                    }
-                };
-            }
-        });
+        const nuevaImg = document.createElement('img');
+        nuevaImg.src = infoCarta.img;
+        nuevaImg.className = 'imagen-griton carta-lanzada';
+
+        // Matemáticas de desorden: Rotación (-15 a +15 grados) y Desplazamiento (-12 a +12 px)
+        const rot = (Math.random() * 30 - 15).toFixed(1);
+        const offsetX = (Math.random() * 24 - 12).toFixed(1);
+        const offsetY = (Math.random() * 24 - 12).toFixed(1);
+
+        nuevaImg.style.setProperty('--rot-final', `${rot}deg`);
+        nuevaImg.style.setProperty('--x-final', `${offsetX}px`);
+        nuevaImg.style.setProperty('--y-final', `${offsetY}px`);
+
+        pila.appendChild(nuevaImg);
+
+        // Rendimiento: Mantener solo las últimas 6 cartas en pantalla
+        if (pila.children.length > 6) {
+            pila.removeChild(pila.firstChild);
+        }
+    } else {
+        if(texto) texto.textContent = carta;
     }
+    
+    // Aquí continúa tu lógica normal de tsLlegada...
+    state.ultimaCartaRecibida = numCarta;
+    state.tsLlegadaCarta = Date.now();
+    document.querySelectorAll('.carta').forEach(el => {
+        if (el.dataset.numero === numCarta && !el.classList.contains('marcada')) {
+            if (state.configSala.ayudaNinos) el.classList.add('marcable-visual');
+        }
+    });
 });
 
 socket.on('casilla_marcada', (d) => {
@@ -355,15 +533,49 @@ socket.on('juego_terminado', (datos) => {
 });
 
 socket.on('regreso_al_lobby_exitoso', () => {
-    state.juegoEnCurso = false; state.misCartasMarcadas = 0; document.getElementById('btnLoteria').disabled = true; document.getElementById('btnLoteria').style.display = 'none';
-    document.getElementById('cartaActual').textContent = 'Esperando a que inicie el juego...'; document.getElementById('cartaActual').style.color = "blue";
-    document.getElementById('pantallaResultados').classList.remove('activa'); document.getElementById('pantallaLobby').classList.add('activa');
+    state.juegoEnCurso = false; state.misCartasMarcadas = 0; 
     
-    document.getElementById('cajasListas').style.display = 'flex'; document.getElementById('botonesTablilla').style.display = 'block';
+    document.getElementById('cartaActual').innerHTML = TEXTO_LOBBY; 
+    document.getElementById('cartaActual').style.color = "";
+    document.getElementById('pantallaResultados').classList.remove('activa'); 
+    document.getElementById('pantallaLobby').classList.add('activa');
     
+    // Desactivar la mesa circular
+    document.getElementById('pantallaLobby').classList.remove('mesa-activa');
+    
+    // Devolver el botón de Lotería a su lugar original oculto
+    const btnLoteria = document.getElementById('btnLoteria');
+    btnLoteria.disabled = true; 
+    btnLoteria.style.display = 'none';
+    document.querySelector('.zona-griton').insertBefore(btnLoteria, document.getElementById('cartaActual'));
+    
+    // Restaurar Paneles y Chat
+    const header = document.querySelector('.header-sala');
+    const cajasListas = document.getElementById('cajasListas');
+    const panelConfig = document.getElementById('panelConfiguracion');
+    const columnaHerramientas = document.getElementById('herramientasSala');
+    const chat = document.getElementById('cajaChat');
+
+    if(header) header.classList.remove('oculto-juego');
+    if(cajasListas) cajasListas.classList.remove('oculto-juego');
+    if(panelConfig) panelConfig.classList.remove('oculto-juego');
+    
+    // Dentro de regreso_al_lobby_exitoso, busca la zona de restaurar:
+    if(columnaHerramientas) columnaHerramientas.style.display = 'flex';
+    if(chat) chat.style.display = 'flex';
+    if(chat && columnaHerramientas) {
+        chat.classList.remove('chat-juego');
+        columnaHerramientas.appendChild(chat); // Devuelve el chat a su columna
+    }
+
     if(!state.configSala.sinEspectadores) document.getElementById('btnCambiarRol').style.display = 'inline-block'; 
     document.getElementById('nombreTiempoReal').disabled = false;
-    document.getElementById('panelEspectadorUI').style.display = 'none'; document.getElementById('tituloEspectando').style.display = 'none';
+    document.getElementById('panelEspectadorUI').style.display = 'none'; 
+    
+    // AQUÍ ESTÁ LA LÍNEA PROTEGIDA:
+    const tituloEsp = document.getElementById('tituloEspectando');
+    if(tituloEsp) tituloEsp.style.display = 'none';
+    
     document.getElementById('contenedorEspectador').innerHTML = '';
     
     if (state.soyAnfitrion) {
