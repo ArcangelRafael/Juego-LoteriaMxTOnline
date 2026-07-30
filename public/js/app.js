@@ -620,20 +620,11 @@ socket.on('nueva_carta', (carta) => {
     const tsLlegada = Date.now();
     state.tsLlegadaCarta = tsLlegada;
     
-    // Iluminación para espectadores
+    // Iluminación para espectadores (Corregido a su estado original)
     if (state.miRol === 'espectador') {
         document.querySelectorAll('#contenedorEspectador .carta').forEach(div => {
             if (div.dataset.numero === numCarta && !div.classList.contains('marcada')) {
-                // Añade la marca sin borrar tu imagen
-                        div.classList.add('marcada'); 
-                        
-                        // Evaluar qué ficha inyectar
-                        let marcador = '<div class="palomita">✔</div>';
-                        if (state.miFicha === 'peso') marcador = '<div class="palomita"><img src="/assets/img/unpeso.webp" class="ficha-img"></div>';
-                        else if (state.miFicha === 'frijol') marcador = '<div class="palomita"><img src="/assets/img/gfrijol.webp" class="ficha-img"></div>';
-                        else if (state.miFicha === 'arroz') marcador = '<div class="palomita"><img src="/assets/img/garroz.webp" class="ficha-img"></div>';
-                        
-                        div.innerHTML += marcador;
+                div.classList.add('marcable-visual'); 
                 setTimeout(() => div.classList.remove('marcable-visual'), state.configSala.tiempoMarcar);
             }
         });
@@ -663,9 +654,16 @@ socket.on('nueva_carta', (carta) => {
                         div.classList.remove('marcable-visual'); 
                         div.style.cursor = "default"; 
                         
-                        // Añade la palomita sin borrar tu imagen
+                        // Añade la marca sin borrar tu imagen
                         div.classList.add('marcada'); 
-                        div.innerHTML += '<div class="palomita">✔</div>';
+                        
+                        // AQUÍ VA LA LÓGICA DE LAS FICHAS (En el lugar correcto)
+                        let marcador = '<div class="palomita">✔</div>';
+                        if (state.miFicha === 'peso') marcador = '<div class="palomita"><img src="/assets/img/unpeso.webp" class="ficha-img"></div>';
+                        else if (state.miFicha === 'frijol') marcador = '<div class="palomita"><img src="/assets/img/gfrijol.webp" class="ficha-img"></div>';
+                        else if (state.miFicha === 'arroz') marcador = '<div class="palomita"><img src="/assets/img/garroz.webp" class="ficha-img"></div>';
+                        
+                        div.innerHTML += marcador;
                         
                         state.misCartasMarcadas++;
                         if(state.misCartasMarcadas === 16) document.getElementById('btnLoteria').disabled = false;
