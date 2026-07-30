@@ -109,6 +109,10 @@ export function prepararInterfazJuego(state, contruirEspectadorCb) {
             btnLoteria.style.display = 'inline-block';
             document.getElementById('panelEspectadorUI').appendChild(btnLoteria);
         }
+        
+        // MOSTRAR BOTÓN DE CHAT FLOTANTE
+        const btnChatMovil = document.getElementById('btnAbrirChatMovil');
+        if(btnChatMovil) btnChatMovil.style.display = 'flex';
     }
     
     document.querySelectorAll('.tablilla').forEach(el => {
@@ -125,6 +129,10 @@ export function mostrarResultados(datos) {
     document.getElementById('pantallaResultados').classList.add('activa');
     document.getElementById('modalVotacion').style.display = 'none';
     document.getElementById('modalSinCartas').style.display = 'none';
+    
+    // OCULTAR ELEMENTOS DE CHAT IN-GAME
+    document.getElementById('btnAbrirChatMovil').style.display = 'none';
+    document.getElementById('chatIngameContenedor').style.display = 'none';
 
     const ranking = datos.ranking; const stats = datos.estadisticas;
     

@@ -69,6 +69,59 @@ document.getElementById('btnAgregarBot').addEventListener('click', () => {
     document.getElementById('nombreBotInput').value = "";
 });
 
+// NUEVO: Minimizar panel de "Mostrar juego de:"
+document.getElementById('btnMinimizarPanel').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const panel = document.getElementById('panelEspectadorUI');
+    const contenido = document.getElementById('contenidoPanelEspectador');
+    const btn = e.target;
+    
+    if (panel.classList.contains('minimizado')) {
+        panel.classList.remove('minimizado');
+        contenido.style.display = 'block';
+        btn.textContent = '-';
+    } else {
+        panel.classList.add('minimizado');
+        contenido.style.display = 'none';
+        btn.textContent = '+';
+    }
+});
+
+// NUEVO: Abrir chat desde el botón flotante (Móviles)
+document.getElementById('btnAbrirChatMovil').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const cont = document.getElementById('chatIngameContenedor');
+    const input = document.getElementById('chatIngameInput');
+    
+    if (cont.style.display === 'none') {
+        const miFoto = state.estadoJugadores[socket.id]?.foto;
+        const imgEl = document.getElementById('chatIngameFoto');
+        imgEl.src = miFoto || '';
+        imgEl.style.display = miFoto ? 'block' : 'none';
+        
+        cont.style.display = 'flex';
+        input.focus(); // Abre el teclado virtual
+    } else {
+        cont.style.display = 'none';
+    }
+});
+
+// NUEVO: Enviar mensaje desde botón interno (Evita usar tecla Enter)
+document.getElementById('btnEnviarChatIngame').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const input = document.getElementById('chatIngameInput');
+    const cont = document.getElementById('chatIngameContenedor');
+    
+    if (input.value.trim() !== '') {
+        socket.emit('enviar_mensaje', { nombreSala: state.miSalaActual, mensaje: input.value });
+        input.value = '';
+    }
+    cont.style.display = 'none';
+});
+
 // NUEVO: Lógica del chat con "Enter" IN-GAME
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && state.juegoEnCurso && state.miRol === 'jugador') {
@@ -187,13 +240,22 @@ function construirPanelEspectadorCb() {
     
     for (const id in state.estadoJugadores) {
         if (id !== socket.id) {
-            contChecks.innerHTML += `<label class="checkbox-label"><input type="checkbox" class="check-jugador" value="${id}"> ${state.estadoJugadores[id].nombre || 'Anónimo'}</label>`;
+            // Se inyecta el atributo 'checked' por defecto a las tablillas individuales
+            contChecks.innerHTML += `<label class="checkbox-label"><input type="checkbox" class="check-jugador" value="${id}" checked> ${state.estadoJugadores[id].nombre || 'Anónimo'}</label>`;
         }
     }
     
-    const cTodos = document.getElementById('checkTodos'); const cInd = document.querySelectorAll('.check-jugador');
+    const cTodos = document.getElementById('checkTodos'); 
+    const cInd = document.querySelectorAll('.check-jugador');
+    
+    // Forzamos el check general de "TODOS"
+    cTodos.checked = true;
+
     cTodos.addEventListener('change', (e) => { cInd.forEach(c => c.checked = e.target.checked); renderTabEspectadoresCb(); });
     cInd.forEach(c => c.addEventListener('change', () => { if(!c.checked) cTodos.checked = false; renderTabEspectadoresCb(); }));
+    
+    // Lanzamos el dibujado automático sin esperar que el usuario haga clic
+    renderTabEspectadoresCb(); 
 }
 
 function renderTabEspectadoresCb() {
@@ -622,6 +684,10 @@ socket.on('regreso_al_lobby_exitoso', () => {
     if(!state.configSala.sinEspectadores) document.getElementById('btnCambiarRol').style.display = 'inline-block'; 
     document.getElementById('nombreTiempoReal').disabled = false;
     document.getElementById('panelEspectadorUI').style.display = 'none'; 
+    
+    // OCULTAR BOTÓN MÓVIL AL VOLVER AL LOBBY
+    document.getElementById('btnAbrirChatMovil').style.display = 'none';
+    document.getElementById('chatIngameContenedor').style.display = 'none';
     
     const tituloEsp = document.getElementById('tituloEspectando');
     if(tituloEsp) tituloEsp.style.display = 'none';

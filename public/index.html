@@ -188,9 +188,17 @@
         </div>
 
         <div id="panelEspectadorUI" class="glass-panel espectador-panel" style="display:none;">
-            <h3 class="list-title">Mostrar juego de:</h3>
-            <label class="checkbox-label mr-3"><input type="checkbox" id="checkTodos"> TODOS</label>
-            <span id="listaChecksJugadores"></span>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 class="list-title m-0">Mostrar juego de:</h3>
+                <!-- Botón de minimizar -->
+                <button id="btnMinimizarPanel" style="background:transparent; border:none; color:var(--text-muted); font-size:28px; line-height:1; padding:0 5px; font-weight:800;">-</button>
+            </div>
+            
+            <div id="contenidoPanelEspectador" style="margin-top: 10px;">
+                <label class="checkbox-label mr-3"><input type="checkbox" id="checkTodos"> TODOS</label>
+                <span id="listaChecksJugadores"></span>
+            </div>
+            <!-- El botón de Lotería se inyectará aquí abajo automáticamente por ui.js sin ser ocultado -->
         </div>
 
         <div id="contenedorTablillas"></div>
@@ -215,10 +223,14 @@
         </div>
     </div>
 
-    <!-- Chat flotante in-game (Oculto por defecto) -->
+    <!-- Botón flotante para abrir chat en celular (Ingame) -->
+    <button id="btnAbrirChatMovil" class="btn-flotante-chat" style="display:none;">💬</button>
+
+    <!-- Chat flotante in-game Mejorado -->
     <div id="chatIngameContenedor" class="glass-panel chat-ingame-flotante" style="display:none;">
         <img id="chatIngameFoto" src="" class="foto-perfil m-0">
-        <input type="text" id="chatIngameInput" class="input-dark m-0" placeholder="Escribe tu mensaje y presiona Enter..." style="border:none; box-shadow:none; background:transparent;">
+        <input type="text" id="chatIngameInput" class="input-dark m-0" placeholder="Escribe tu mensaje..." style="border:none; box-shadow:none; background:transparent;">
+        <button id="btnEnviarChatIngame" class="btn-blue" style="padding: 8px 16px; border-radius: 20px; font-size: 14px;">Enviar</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
