@@ -88,6 +88,70 @@ document.getElementById('btnMinimizarPanel').addEventListener('pointerdown', (e)
     }
 });
 
+// ==========================================
+// NUEVO: Hacer el panel "Mostrar juego de:" arrastrable
+// ==========================================
+const panelEspectador = document.getElementById('panelEspectadorUI');
+let isDraggingPanel = false;
+let dragStartX, dragStartY;
+
+// Cambia el cursor al pasar el mouse por encima (Solo visible en PC)
+panelEspectador.style.cursor = 'grab';
+
+panelEspectador.addEventListener('pointerdown', (e) => {
+    // IMPORTANTE: Si el usuario toca un botón o la lista de checkboxes, NO arrastramos.
+    if (e.target.closest('button') || e.target.closest('#listaChecksJugadores')) {
+        return; 
+    }
+
+    isDraggingPanel = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+
+    // Obtener las coordenadas reales en pantalla del panel
+    const rect = panelEspectador.getBoundingClientRect();
+    
+    // Al empezar a arrastrar, congelamos su posición en píxeles absolutos.
+    // Esto rompe las reglas de CSS (bottom, right) para darnos control total.
+    panelEspectador.style.left = rect.left + 'px';
+    panelEspectador.style.top = rect.top + 'px';
+    panelEspectador.style.right = 'auto';
+    panelEspectador.style.bottom = 'auto';
+    panelEspectador.style.transform = 'none';
+    panelEspectador.style.margin = '0';
+    
+    // Evita que se seleccione texto feo mientras arrastramos
+    panelEspectador.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none'; 
+});
+
+document.addEventListener('pointermove', (e) => {
+    if (!isDraggingPanel) return;
+    e.preventDefault(); // Evita que el celular intente hacer scroll en la página
+
+    // Calculamos cuánto se movió el dedo desde el último fotograma
+    const deltaX = e.clientX - dragStartX;
+    const deltaY = e.clientY - dragStartY;
+
+    const rect = panelEspectador.getBoundingClientRect();
+
+    // Actualizamos la posición sumando el movimiento
+    panelEspectador.style.left = (rect.left + deltaX) + 'px';
+    panelEspectador.style.top = (rect.top + deltaY) + 'px';
+
+    // Actualizamos el punto de inicio para el siguiente movimiento
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+});
+
+document.addEventListener('pointerup', () => {
+    if (isDraggingPanel) {
+        isDraggingPanel = false;
+        panelEspectador.style.cursor = 'grab';
+        document.body.style.userSelect = 'auto';
+    }
+});
+
 // NUEVO: Abrir chat desde el botón flotante (Móviles)
 document.getElementById('btnAbrirChatMovil').addEventListener('pointerdown', (e) => {
     e.preventDefault();
