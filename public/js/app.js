@@ -79,30 +79,139 @@ document.getElementById('btnMinimizarPanel').addEventListener('pointerdown', (e)
     else { panel.classList.add('minimizado'); contenido.style.display = 'none'; btn.textContent = '+'; }
 });
 
+// ==========================================
+// RECUPERADO: Hacer el panel "Mostrar juego de:" arrastrable
+// ==========================================
 const panelEspectador = document.getElementById('panelEspectadorUI');
-let isDraggingPanel = false; let dragStartX, dragStartY;
+let isDraggingPanel = false;
+let dragStartPanelX, dragStartPanelY;
+
 panelEspectador.style.cursor = 'grab';
 
 panelEspectador.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('button') || e.target.closest('#listaChecksJugadores')) return; 
-    isDraggingPanel = true; dragStartX = e.clientX; dragStartY = e.clientY;
+    // Evita arrastrar si se toca un botón, checkbox o las herramientas de la tablilla
+    if (e.target.closest('button') || e.target.closest('#listaChecksJugadores') || e.target.classList.contains('resizer-handle') || e.target.classList.contains('arrastrable-header')) {
+        return; 
+    }
+
+    isDraggingPanel = true;
+    dragStartPanelX = e.clientX;
+    dragStartPanelY = e.clientY;
+
     const rect = panelEspectador.getBoundingClientRect();
-    panelEspectador.style.left = rect.left + 'px'; panelEspectador.style.top = rect.top + 'px';
-    panelEspectador.style.right = 'auto'; panelEspectador.style.bottom = 'auto';
-    panelEspectador.style.transform = 'none'; panelEspectador.style.margin = '0';
-    panelEspectador.style.cursor = 'grabbing'; document.body.style.userSelect = 'none'; 
+    
+    panelEspectador.style.left = rect.left + 'px';
+    panelEspectador.style.top = rect.top + 'px';
+    panelEspectador.style.right = 'auto';
+    panelEspectador.style.bottom = 'auto';
+    panelEspectador.style.transform = 'none';
+    panelEspectador.style.margin = '0';
+    
+    panelEspectador.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none'; 
 });
 
 document.addEventListener('pointermove', (e) => {
     if (!isDraggingPanel) return;
-    e.preventDefault(); 
-    const deltaX = e.clientX - dragStartX; const deltaY = e.clientY - dragStartY;
+    e.preventDefault();
+
+    const deltaX = e.clientX - dragStartPanelX;
+    const deltaY = e.clientY - dragStartPanelY;
+
     const rect = panelEspectador.getBoundingClientRect();
-    panelEspectador.style.left = (rect.left + deltaX) + 'px'; panelEspectador.style.top = (rect.top + deltaY) + 'px';
-    dragStartX = e.clientX; dragStartY = e.clientY;
+
+    panelEspectador.style.left = (rect.left + deltaX) + 'px';
+    panelEspectador.style.top = (rect.top + deltaY) + 'px';
+
+    dragStartPanelX = e.clientX;
+    dragStartPanelY = e.clientY;
 });
+
 document.addEventListener('pointerup', () => {
-    if (isDraggingPanel) { isDraggingPanel = false; panelEspectador.style.cursor = 'grab'; document.body.style.userSelect = 'auto'; }
+    if (isDraggingPanel) {
+        isDraggingPanel = false;
+        panelEspectador.style.cursor = 'grab';
+        document.body.style.userSelect = 'auto';
+    }
+});
+
+// ==========================================
+// NUEVO: Lógica para redimensionar y MOVER la Tablilla
+// ==========================================
+let isResizingTablilla = false;
+let startYResizer = 0; let startXResizer = 0;
+let startScaleY = 1; let startScaleX = 1;
+
+let isDraggingMiTablilla = false;
+let dragTabStartX = 0; let dragTabStartY = 0;
+let currentOffsetX = 0; let currentOffsetY = 0;
+
+const contenedorTabs = document.getElementById('contenedorTablillas');
+
+document.addEventListener('pointerdown', (e) => {
+    // 1. Si toca la barra azul (Resizer)
+    if (e.target.classList.contains('resizer-handle')) {
+        e.preventDefault(); 
+        e.stopPropagation();
+        isResizingTablilla = true;
+        startXResizer = e.clientX;
+        startYResizer = e.clientY;
+        
+        startScaleX = parseFloat(contenedorTabs.style.getPropertyValue('--escala-x')) || (window.innerWidth <= 768 ? 1.18 : 1.35);
+        startScaleY = parseFloat(contenedorTabs.style.getPropertyValue('--escala-y')) || (window.innerWidth <= 768 ? 1.18 : 1.35);
+        document.body.style.cursor = 'move';
+    }
+    // 2. Si toca el título de la tablilla (Mover)
+    else if (e.target.classList.contains('arrastrable-header')) {
+        e.preventDefault();
+        e.stopPropagation();
+        isDraggingMiTablilla = true;
+        dragTabStartX = e.clientX;
+        dragTabStartY = e.clientY;
+        
+        currentOffsetX = parseFloat(contenedorTabs.style.getPropertyValue('--offset-x')) || 0;
+        currentOffsetY = parseFloat(contenedorTabs.style.getPropertyValue('--offset-y')) || 0;
+    }
+});
+
+document.addEventListener('pointermove', (e) => {
+    // Lógica para Escalar (Ancho y Alto)
+    if (isResizingTablilla) {
+        e.preventDefault();
+        const deltaX = e.clientX - startXResizer; // Arrastrar a los lados = ancho
+        const deltaY = startYResizer - e.clientY; // Arrastrar arriba/abajo = alto
+        
+        const newScaleX = Math.max(0.6, Math.min(startScaleX + (deltaX * 0.005), 2.5));
+        const newScaleY = Math.max(0.6, Math.min(startScaleY + (deltaY * 0.005), 2.5));
+        
+        contenedorTabs.style.setProperty('--escala-x', newScaleX);
+        contenedorTabs.style.setProperty('--escala-y', newScaleY);
+    }
+    
+    // Lógica para Mover por la pantalla
+    if (isDraggingMiTablilla) {
+        e.preventDefault();
+        const deltaX = e.clientX - dragTabStartX;
+        const deltaY = e.clientY - dragTabStartY;
+        
+        contenedorTabs.style.setProperty('--offset-x', (currentOffsetX + deltaX) + 'px');
+        contenedorTabs.style.setProperty('--offset-y', (currentOffsetY + deltaY) + 'px');
+        
+        dragTabStartX = e.clientX;
+        dragTabStartY = e.clientY;
+        currentOffsetX += deltaX;
+        currentOffsetY += deltaY;
+    }
+});
+
+document.addEventListener('pointerup', () => {
+    if (isResizingTablilla) {
+        isResizingTablilla = false;
+        document.body.style.cursor = 'auto';
+    }
+    if (isDraggingMiTablilla) {
+        isDraggingMiTablilla = false;
+    }
 });
 
 // Chat In-Game
@@ -352,25 +461,48 @@ function renderizarTablillasCallback(t) {
         const divTab = document.createElement('div'); divTab.className = 'tablilla';
         divTab.id = 'tablilla-dom-' + tab.id;
         
-        if (tab.bloqueadaPor) { if (tab.bloqueadaPor === socket.id) divTab.classList.add('bloqueada-mia'); else divTab.classList.add('bloqueada-otros'); } 
-        else if (tab.viendoPor.length > 0) { if (tab.viendoPor.includes(socket.id)) divTab.classList.add('viendo-mia'); else divTab.classList.add('viendo-otros'); }
+        let handleHTML = ''; 
+        let claseHeader = ''; // Controla el diseño del título
         
-        // NUEVO: Nombre dinámico para tablillas personalizadas
+        if (tab.bloqueadaPor) { 
+            if (tab.bloqueadaPor === socket.id) {
+                divTab.classList.add('bloqueada-mia');
+                // IMPORTANTE: Siempre lo inyectamos. El CSS lo ocultará en el Lobby.
+                handleHTML = `<div class="resizer-handle" title="Arrastra en cualquier dirección">⤡ Arrastrar para ajustar tamaño</div>`;
+                claseHeader = 'arrastrable-header';
+            } else {
+                divTab.classList.add('bloqueada-otros');
+            }
+        } 
+        else if (tab.viendoPor.length > 0) { 
+            if (tab.viendoPor.includes(socket.id)) divTab.classList.add('viendo-mia'); 
+            else divTab.classList.add('viendo-otros'); 
+        }
+        
         let nombreTablilla = tab.isCustom ? '¡Tu Tablilla!' : `Tablilla ${tab.id}`;
         
-        divTab.innerHTML = `<h4>${nombreTablilla}</h4><div class="grid-cartas"></div>`;
+        // Inyectamos todo junto aplicando la clase de arrastre si corresponde
+        divTab.innerHTML = `${handleHTML}<h4 class="${claseHeader}">${nombreTablilla}</h4><div class="grid-cartas"></div>`;
         const grid = divTab.querySelector('.grid-cartas');
         
         tab.cartas.forEach(c => { 
             const divC = document.createElement('div'); divC.className = 'carta'; 
             const numCarta = c.split(' ')[1]; divC.dataset.numero = numCarta;
             const infoCarta = CARTAS_LOTERIA[numCarta];
-            if (infoCarta) divC.innerHTML = `<img src="${infoCarta.img}" alt="${infoCarta.nombre}" style="width:100%; height:100%; object-fit:cover; border-radius:3px;">`;
-            else divC.textContent = numCarta; 
+            
+            if (infoCarta) {
+                divC.innerHTML = `
+                    <img src="${infoCarta.img}" alt="${infoCarta.nombre}" class="img-carta-adentro">
+                    <div class="nombre-carta-tablilla" title="${infoCarta.nombre}">${infoCarta.nombre}</div>
+                `;
+            } else {
+                divC.textContent = numCarta; 
+            }
             grid.appendChild(divC); 
         });
 
         divTab.addEventListener('pointerdown', (e) => { 
+            if(e.target.classList.contains('resizer-handle')) return; // No ver tablilla si se tocó la barra
             e.preventDefault();
             if (state.miRol === 'jugador' && !tab.bloqueadaPor) socket.emit('ver_tablilla', { nombreSala: state.miSalaActual, idTablilla: tab.id }); 
         });
@@ -422,8 +554,14 @@ function renderTabEspectadoresCb() {
             const numCarta = c.split(' ')[1]; divC.dataset.numero = numCarta;
             const infoCarta = CARTAS_LOTERIA[numCarta];
 
-            if (infoCarta) divC.innerHTML = `<img src="${infoCarta.img}" style="width:100%; height:100%; object-fit:cover; border-radius:3px;">`;
-            else divC.textContent = numCarta;
+            if (infoCarta) {
+                divC.innerHTML = `
+                    <img src="${infoCarta.img}" class="img-carta-adentro">
+                    <div class="nombre-carta-tablilla" title="${infoCarta.nombre}">${infoCarta.nombre}</div>
+                `;
+            } else {
+                divC.textContent = numCarta;
+            }
 
             if(d.marcas.includes(c)) { divC.classList.add('marcada'); divC.innerHTML += '<div class="palomita">✔</div>'; }
             grid.appendChild(divC);
