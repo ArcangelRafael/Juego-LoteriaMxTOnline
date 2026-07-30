@@ -136,7 +136,7 @@ document.addEventListener('pointerup', () => {
 });
 
 // ==========================================
-// NUEVO: Lógica para redimensionar y MOVER la Tablilla
+// NUEVO: Lógica para redimensionar y MOVER la Tablilla + EL GRITÓN
 // ==========================================
 let isResizingTablilla = false;
 let startYResizer = 0; let startXResizer = 0;
@@ -146,10 +146,15 @@ let isDraggingMiTablilla = false;
 let dragTabStartX = 0; let dragTabStartY = 0;
 let currentOffsetX = 0; let currentOffsetY = 0;
 
+// Físicas del Gritón
+let isDraggingGriton = false;
+let dragGritonStartX = 0; let dragGritonStartY = 0;
+let currentGritonOffsetX = 0; let currentGritonOffsetY = 0;
+
 const contenedorTabs = document.getElementById('contenedorTablillas');
 
 document.addEventListener('pointerdown', (e) => {
-    // 1. Si toca la barra azul (Resizer)
+    // 1. Si toca la barra azul de la Tablilla (Resizer)
     if (e.target.classList.contains('resizer-handle')) {
         e.preventDefault(); 
         e.stopPropagation();
@@ -161,7 +166,7 @@ document.addEventListener('pointerdown', (e) => {
         startScaleY = parseFloat(contenedorTabs.style.getPropertyValue('--escala-y')) || (window.innerWidth <= 768 ? 1.18 : 1.35);
         document.body.style.cursor = 'move';
     }
-    // 2. Si toca el título de la tablilla (Mover)
+    // 2. Si toca el título de la tablilla (Mover Tablilla)
     else if (e.target.classList.contains('arrastrable-header')) {
         e.preventDefault();
         e.stopPropagation();
@@ -172,14 +177,26 @@ document.addEventListener('pointerdown', (e) => {
         currentOffsetX = parseFloat(contenedorTabs.style.getPropertyValue('--offset-x')) || 0;
         currentOffsetY = parseFloat(contenedorTabs.style.getPropertyValue('--offset-y')) || 0;
     }
+    // 3. Si toca el texto del Gritón (Mover Gritón completo)
+    else if (e.target.id === 'textoCartaGriton') {
+        e.preventDefault();
+        e.stopPropagation();
+        isDraggingGriton = true;
+        dragGritonStartX = e.clientX;
+        dragGritonStartY = e.clientY;
+        
+        const zonaGriton = document.querySelector('.zona-griton');
+        currentGritonOffsetX = parseFloat(zonaGriton.style.getPropertyValue('--griton-x')) || 0;
+        currentGritonOffsetY = parseFloat(zonaGriton.style.getPropertyValue('--griton-y')) || 0;
+    }
 });
 
 document.addEventListener('pointermove', (e) => {
-    // Lógica para Escalar (Ancho y Alto)
+    // Lógica para Escalar Tablilla
     if (isResizingTablilla) {
         e.preventDefault();
-        const deltaX = e.clientX - startXResizer; // Arrastrar a los lados = ancho
-        const deltaY = startYResizer - e.clientY; // Arrastrar arriba/abajo = alto
+        const deltaX = e.clientX - startXResizer; 
+        const deltaY = startYResizer - e.clientY; 
         
         const newScaleX = Math.max(0.6, Math.min(startScaleX + (deltaX * 0.005), 2.5));
         const newScaleY = Math.max(0.6, Math.min(startScaleY + (deltaY * 0.005), 2.5));
@@ -188,7 +205,7 @@ document.addEventListener('pointermove', (e) => {
         contenedorTabs.style.setProperty('--escala-y', newScaleY);
     }
     
-    // Lógica para Mover por la pantalla
+    // Lógica para Mover Tablilla
     if (isDraggingMiTablilla) {
         e.preventDefault();
         const deltaX = e.clientX - dragTabStartX;
@@ -202,6 +219,22 @@ document.addEventListener('pointermove', (e) => {
         currentOffsetX += deltaX;
         currentOffsetY += deltaY;
     }
+
+    // Lógica para Mover el Gritón (Todo el conjunto)
+    if (isDraggingGriton) {
+        e.preventDefault();
+        const deltaX = e.clientX - dragGritonStartX;
+        const deltaY = e.clientY - dragGritonStartY;
+        
+        const zonaGriton = document.querySelector('.zona-griton');
+        zonaGriton.style.setProperty('--griton-x', (currentGritonOffsetX + deltaX) + 'px');
+        zonaGriton.style.setProperty('--griton-y', (currentGritonOffsetY + deltaY) + 'px');
+        
+        dragGritonStartX = e.clientX;
+        dragGritonStartY = e.clientY;
+        currentGritonOffsetX += deltaX;
+        currentGritonOffsetY += deltaY;
+    }
 });
 
 document.addEventListener('pointerup', () => {
@@ -209,9 +242,8 @@ document.addEventListener('pointerup', () => {
         isResizingTablilla = false;
         document.body.style.cursor = 'auto';
     }
-    if (isDraggingMiTablilla) {
-        isDraggingMiTablilla = false;
-    }
+    if (isDraggingMiTablilla) isDraggingMiTablilla = false;
+    if (isDraggingGriton) isDraggingGriton = false;
 });
 
 // Chat In-Game
@@ -701,28 +733,93 @@ socket.on('actualizar_tablillas', (t) => {
 });
 
 socket.on('juego_iniciado', (info) => { state.estadoJugadores = info; ui.prepararInterfazJuego(state, construirPanelEspectadorCb); });
-socket.on('actualizar_texto_carta', (texto) => { document.getElementById('cartaActual').textContent = texto; });
+socket.on('actualizar_texto_carta', (texto) => { 
+    const cartaContenedor = document.getElementById('cartaActual'); 
+    let pila = document.getElementById('pilaCartasGriton'); 
+    let textoSpan = document.getElementById('textoCartaGriton');
 
-// LA LÓGICA DE ILUMINACIÓN Y CLICK DE CARTAS 
-socket.on('nueva_carta', (carta) => {
-    const numCarta = carta.split(' ')[1]; const infoCarta = CARTAS_LOTERIA[numCarta];
-    const cartaContenedor = document.getElementById('cartaActual'); let pila = document.getElementById('pilaCartasGriton'); let texto = document.getElementById('textoCartaGriton');
+    // Si la mesa 3D y el mazo aún no existen, los construimos desde la cuenta regresiva
     if (!pila) {
         cartaContenedor.innerHTML = `
             <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
                 <span id="textoCartaGriton" style="font-size: 1.4em; font-weight: 900; z-index: 310; text-shadow: 0 4px 15px rgba(0,0,0,0.8); background: rgba(15,23,42,0.85); padding: 8px 25px; border-radius: 12px; color: #38bdf8; border: 1px solid rgba(255,255,255,0.1);"></span>
-                <div id="pilaCartasGriton" style="position: relative; width: 220px; height: 310px;"></div>
+                <div class="griton-mesa-container">
+                    <!-- Pila de cartas reveladas (Izquierda) -->
+                    <div id="pilaCartasGriton" style="position: relative; width: 220px; height: 310px; z-index: 2;"></div>
+                    
+                    <!-- Mazo de cartas ocultas (Derecha) -->
+                    <div id="mazoCartasGriton" style="position: relative; width: 220px; height: 310px; z-index: 1;">
+                        <img src="/assets/img/backards.webp" class="mazo-estatico" style="transform: rotate(-2deg) translate(2px, 2px);">
+                        <img src="/assets/img/backards.webp" class="mazo-estatico" style="transform: rotate(1deg) translate(-2px, -2px);">
+                        <img src="/assets/img/backards.webp" class="mazo-estatico">
+                    </div>
+                </div>
             </div>`;
-        pila = document.getElementById('pilaCartasGriton'); texto = document.getElementById('textoCartaGriton');
+        textoSpan = document.getElementById('textoCartaGriton');
     }
+    
+    // Inyectamos el texto de la cuenta regresiva en el letrero arrastrable
+    textoSpan.textContent = texto; 
+});
+
+// LA LÓGICA DE ILUMINACIÓN Y CLICK DE CARTAS 
+socket.on('nueva_carta', (carta) => {
+    const numCarta = carta.split(' ')[1]; 
+    const infoCarta = CARTAS_LOTERIA[numCarta];
+    
+    const cartaContenedor = document.getElementById('cartaActual'); 
+    let pila = document.getElementById('pilaCartasGriton'); 
+    let texto = document.getElementById('textoCartaGriton');
+
+    // Si es la primera carta del juego, construimos la "Mesa 3D" del Gritón
+    if (!pila) {
+        cartaContenedor.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
+                <span id="textoCartaGriton" style="font-size: 1.4em; font-weight: 900; z-index: 310; text-shadow: 0 4px 15px rgba(0,0,0,0.8); background: rgba(15,23,42,0.85); padding: 8px 25px; border-radius: 12px; color: #38bdf8; border: 1px solid rgba(255,255,255,0.1);"></span>
+                <div class="griton-mesa-container">
+                    <!-- Pila de cartas reveladas (Izquierda) -->
+                    <div id="pilaCartasGriton" style="position: relative; width: 220px; height: 310px; z-index: 2;"></div>
+                    
+                    <!-- Mazo de cartas ocultas (Derecha) -->
+                    <div id="mazoCartasGriton" style="position: relative; width: 220px; height: 310px; z-index: 1;">
+                        <img src="/assets/img/backards.webp" class="mazo-estatico" style="transform: rotate(-2deg) translate(2px, 2px);">
+                        <img src="/assets/img/backards.webp" class="mazo-estatico" style="transform: rotate(1deg) translate(-2px, -2px);">
+                        <img src="/assets/img/backards.webp" class="mazo-estatico">
+                    </div>
+                </div>
+            </div>`;
+        pila = document.getElementById('pilaCartasGriton'); 
+        texto = document.getElementById('textoCartaGriton');
+    }
+
     if (infoCarta) {
         texto.textContent = `¡${infoCarta.nombre}!`;
-        const nuevaImg = document.createElement('img'); nuevaImg.src = infoCarta.img; nuevaImg.className = 'imagen-griton carta-lanzada';
-        const rot = (Math.random() * 30 - 15).toFixed(1); const offsetX = (Math.random() * 24 - 12).toFixed(1); const offsetY = (Math.random() * 24 - 12).toFixed(1);
-        nuevaImg.style.setProperty('--rot-final', `${rot}deg`); nuevaImg.style.setProperty('--x-final', `${offsetX}px`); nuevaImg.style.setProperty('--y-final', `${offsetY}px`);
-        pila.appendChild(nuevaImg);
+
+        // Creamos el contenedor 3D de la carta
+        const carta3D = document.createElement('div'); 
+        carta3D.className = 'carta-3d-container';
+        
+        // Matemáticas de desorden en la pila
+        const rot = (Math.random() * 30 - 15).toFixed(1); 
+        const offsetX = (Math.random() * 24 - 12).toFixed(1); 
+        const offsetY = (Math.random() * 24 - 12).toFixed(1);
+        
+        carta3D.style.setProperty('--rot-final', `${rot}deg`); 
+        carta3D.style.setProperty('--x-final', `${offsetX}px`); 
+        carta3D.style.setProperty('--y-final', `${offsetY}px`);
+
+        // Inyectamos el reverso y el frente de la carta
+        carta3D.innerHTML = `
+            <img src="/assets/img/backards.webp" class="carta-cara carta-dorso">
+            <img src="${infoCarta.img}" class="carta-cara carta-frente">
+        `;
+
+        pila.appendChild(carta3D);
+        
         if (pila.children.length > 6) pila.removeChild(pila.firstChild);
-    } else { if(texto) texto.textContent = carta; }
+    } else { 
+        if(texto) texto.textContent = carta; 
+    }
     
     state.ultimaCartaRecibida = numCarta; const tsLlegada = Date.now(); state.tsLlegadaCarta = tsLlegada;
     
@@ -798,6 +895,18 @@ socket.on('nuevo_ganador_notificacion', (d) => {
 socket.on('juego_terminado', (datos) => { state.juegoEnCurso = false; ui.mostrarResultados(datos); });
 
 socket.on('regreso_al_lobby_exitoso', () => {
+
+    // Resetear posiciones customizadas al volver al Lobby
+    const zonaGriton = document.querySelector('.zona-griton');
+    if(zonaGriton) {
+        zonaGriton.style.setProperty('--griton-x', '0px');
+        zonaGriton.style.setProperty('--griton-y', '0px');
+    }
+    if(contenedorTabs) {
+        contenedorTabs.style.setProperty('--offset-x', '0px');
+        contenedorTabs.style.setProperty('--offset-y', '0px');
+    }
+
     state.juegoEnCurso = false; state.misCartasMarcadas = 0; 
     document.getElementById('cartaActual').innerHTML = TEXTO_LOBBY; document.getElementById('cartaActual').style.color = "";
     document.getElementById('pantallaResultados').classList.remove('activa'); document.getElementById('pantallaLobby').classList.add('activa');
