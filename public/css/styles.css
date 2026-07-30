@@ -646,10 +646,10 @@ summary { cursor: pointer; font-weight: 600; color: var(--accent-blue); outline:
    RESPONSIVE: AJUSTES EXCLUSIVOS PARA CELULARES
    ========================================= */
 @media (max-width: 768px) {
-    /* Bajar el Gritón mucho más cerca de la tablilla */
+    /* Bajar el Gritón MÁS todavía */
     .mesa-activa .zona-griton {
         position: absolute;
-        top: 26%; /* ¡Bajó drásticamente! Antes estaba en 12% */
+        top: 38%; /* ¡Bajó drásticamente del 26% al 38%! */
         left: 50%;
         transform: translateX(-50%) scale(0.85); 
         margin: 0;
@@ -660,8 +660,8 @@ summary { cursor: pointer; font-weight: 600; color: var(--accent-blue); outline:
     /* Centrar perfectamente tu tablilla y hacerla MÁS GRANDE */
     .mesa-activa #contenedorTablillas {
         left: 50%;
-        bottom: 15px; /* Pegadita abajo para dar el máximo espacio arriba */
-        transform: translateX(-50%) scale(1.08); /* ¡Creció! Pasó de 0.95 a 1.08 para que sea súper cómoda de marcar */
+        bottom: 15px; 
+        transform: translateX(-50%) scale(1.08); 
         z-index: 20;
     }
 
@@ -672,7 +672,7 @@ summary { cursor: pointer; font-weight: 600; color: var(--accent-blue); outline:
         bottom: 15px; 
         transform: none; 
         width: 150px; 
-        z-index: 30; /* Protegemos que no quede detrás de la tablilla grande */
+        z-index: 30; 
     }
 
     /* Hacer el botón de lotería más compacto */
