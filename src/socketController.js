@@ -157,10 +157,7 @@ module.exports = function (io, socket) {
                     if (tablilla && tablilla.cartas.includes(carta)) {
                         setTimeout(() => {
                             if (['jugando', 'gracia', 'votando'].includes(sala.estado) && !j.marcas.includes(carta)) {
-                                
-                                // Simulación de factor humano: Agregar de 0 a 500ms al click del bot
                                 const msReaccionBot = tiempoReaccionBot + Math.floor(Math.random() * 500);
-
                                 if (sala.marcarCartaJugador(id, carta, msReaccionBot)) {
                                     io.to(nombreSala).emit('casilla_marcada', { idJugador: id, carta: carta });
                                     if (j.marcas.length === 16 && !sala.ganadores.includes(id)) {
@@ -203,7 +200,7 @@ module.exports = function (io, socket) {
         if(!sala || !['jugando', 'gracia'].includes(sala.estado)) return;
         
         const jugador = sala.jugadores[idJugador];
-        const posicion = sala.registrarVictoria(idJugador); // Método modular 
+        const posicion = sala.registrarVictoria(idJugador); 
         
         if (posicion > 0) {
             if (posicion === 1) {
@@ -386,6 +383,19 @@ module.exports = function (io, socket) {
             const t = s.tablillas.find(tb => tb.id === j.tablillaBloqueada);
             if(t) t.bloqueadaPor = null; j.tablillaBloqueada = null; j.viendoTablilla = null;
             io.to(n).emit('actualizar_tablillas', s.tablillas); emitirListas(n);
+        }
+    });
+
+    // NUEVO: INTERCEPTOR DEL CREADOR DE TABLILLAS
+    socket.on('guardar_tablilla_custom', (d) => {
+        const s = partidasActivas[d.nombreSala];
+        if (s && s.estado === 'espera') {
+            // Validamos que sean 16 cartas exactas y que no haya repetidas
+            if (d.cartas.length === 16 && new Set(d.cartas).size === 16) {
+                s.asignarTablillaPersonalizada(socket.id, d.cartas);
+                io.to(d.nombreSala).emit('actualizar_tablillas', s.tablillas);
+                emitirListas(d.nombreSala);
+            }
         }
     });
 

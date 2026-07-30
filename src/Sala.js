@@ -28,7 +28,6 @@ class Sala {
         this.timerInactividad = null;
         
         this.config = { velocidadGriton: 3000, tiempoMarcar: 5000, ayudaNinos: false, sinEspectadores: false };
-        // Inicializamos las estadísticas vacías
         this.estadisticas = { rapido: { nombre: null, ms: Infinity }, lento: { nombre: null, ms: 0 }, robo: null, distraido: null };
     }
 
@@ -47,6 +46,33 @@ class Sala {
             tabs.push({ id: i + 1, cartas: this.mezclar(BARAJA_BASE).slice(0, 16), viendoPor: [], bloqueadaPor: null });
         }
         return tabs;
+    }
+
+    // NUEVO: Permite incrustar la tablilla construida por el usuario
+    asignarTablillaPersonalizada(idJugador, cartasRevisadas) {
+        const jugador = this.jugadores[idJugador];
+        if (!jugador) return false;
+
+        // Desvincular tablilla estándar anterior
+        if (jugador.tablillaBloqueada) {
+            const prev = this.tablillas.find(t => t.id === jugador.tablillaBloqueada);
+            if (prev) prev.bloqueadaPor = null;
+        }
+
+        const customId = 'CUSTOM_' + idJugador;
+        
+        // El frontend ya nos manda el array con "Carta X"
+        let tab = this.tablillas.find(t => t.id === customId);
+        if (!tab) {
+            tab = { id: customId, cartas: cartasRevisadas, viendoPor: [], bloqueadaPor: idJugador, isCustom: true };
+            this.tablillas.push(tab);
+        } else {
+            tab.cartas = cartasRevisadas;
+            tab.bloqueadaPor = idJugador;
+        }
+        
+        jugador.tablillaBloqueada = customId;
+        return true;
     }
 
     getHumanos() { return Object.values(this.jugadores).filter(j => !j.isBot); }
@@ -83,7 +109,8 @@ class Sala {
         const fotoBot = `assets/img/r${numFoto}.webp`;
         const idBot = 'BOT_' + Math.random().toString(36).substr(2, 9);
 
-        const tablillasLibres = this.tablillas.filter(t => t.bloqueadaPor === null);
+        // Los bots no hacen tablillas personalizadas, agarran las normales libres
+        const tablillasLibres = this.tablillas.filter(t => t.bloqueadaPor === null && !t.isCustom);
         if (tablillasLibres.length === 0) return null;
         
         const tabAsignada = tablillasLibres[Math.floor(Math.random() * tablillasLibres.length)];
@@ -123,14 +150,12 @@ class Sala {
         Object.values(this.jugadores).forEach(j => j.marcas = []); 
     }
 
-    // AÑADIDO: Lógica centralizada para marcar y registrar velocidad (Robots y Humanos pasan por aquí)
     marcarCartaJugador(idJugador, carta, msReaccion) {
         const jugador = this.jugadores[idJugador];
         if (!jugador || !this.cartasJugadas.includes(carta) || jugador.marcas.includes(carta)) return false;
 
         jugador.marcas.push(carta);
 
-        // Guardar analíticas de velocidad
         if (msReaccion < this.estadisticas.rapido.ms) {
             this.estadisticas.rapido = { nombre: jugador.nombre, ms: msReaccion };
         }
@@ -140,20 +165,16 @@ class Sala {
         return true;
     }
 
-    // AÑADIDO: Lógica limpia para procesar victoria y detectar el robo (Bug reparado)
     registrarVictoria(idJugador) {
         const jugador = this.jugadores[idJugador];
-        // Validamos si es una victoria real y no ha sido premiado ya
         if (!jugador || jugador.marcas.length < 16 || this.ganadores.includes(idJugador)) return 0;
 
         this.ganadores.push(idJugador);
         const posicion = this.ganadores.length;
 
-        // Validar Robo de Victoria (solo le importa al 1er lugar)
         if (posicion === 1) {
             let victimas = [];
             for (let id in this.jugadores) {
-                // Filtro clave: Asegurar que NO es él mismo (id !== idJugador)
                 if (id !== idJugador && this.jugadores[id].rol === 'jugador' && this.jugadores[id].marcas.length === 16) {
                     victimas.push(this.jugadores[id].nombre);
                 }

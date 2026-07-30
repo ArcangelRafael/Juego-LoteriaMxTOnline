@@ -10,7 +10,6 @@ export function mostrarModalError(msg, callbackRecarga = null) {
     };
 }
 
-// NUEVA FUNCIÓN PARA EL MODAL DE EXPULSIÓN
 export function mostrarModalExpulsion(nombre, onConfirm) {
     document.getElementById('nombreExpulsarUI').textContent = nombre;
     document.getElementById('modalExpulsar').style.display = 'flex';
@@ -55,7 +54,6 @@ export function actualizarListas(listas, state) {
     ulJ.innerHTML = '';
     listas.jugadores.forEach(j => {
         let img = j.foto ? `<img src="${j.foto}" class="foto-perfil">` : '';
-        // AÑADIDO: Guardar el nombre en data-nombre
         let btnKick = (state.soyAnfitrion && j.id !== state.socketId) ? `<button class="btn-kick" data-id="${j.id}" data-nombre="${j.nombre}">Expulsar</button>` : '';
         let esperando = (!j.enLobby && !j.isBot) ? '<span class="estado-esperando">(esperando)</span>' : '';
         ulJ.innerHTML += `<li><span>${img}${j.nombre}${esperando} ${j.listo ? '<span class="listo-true"> (¡Listo!)</span>' : ''}</span> ${btnKick}</li>`;
@@ -63,7 +61,6 @@ export function actualizarListas(listas, state) {
     ulE.innerHTML = '';
     listas.espectadores.forEach(e => {
         let img = e.foto ? `<img src="${e.foto}" class="foto-perfil">` : '';
-        // AÑADIDO: Guardar el nombre en data-nombre
         let btnKick = (state.soyAnfitrion && e.id !== state.socketId) ? `<button class="btn-kick" data-id="${e.id}" data-nombre="${e.nombre}">Expulsar</button>` : '';
         ulE.innerHTML += `<li><span>${img}${e.nombre}</span> ${btnKick}</li>`;
     });
@@ -81,6 +78,10 @@ export function prepararInterfazJuego(state, contruirEspectadorCb) {
     const inputNombre = document.getElementById('nombreTiempoReal');
     if(inputNombre) inputNombre.disabled = true;
     
+    // Ocultar Botón de Creador
+    const btnCreador = document.getElementById('contenedorBtnCreador');
+    if(btnCreador) btnCreador.style.display = 'none';
+    
     const header = document.querySelector('.header-sala');
     const cajasListas = document.getElementById('cajasListas');
     const panelConfig = document.getElementById('panelConfiguracion');
@@ -89,7 +90,6 @@ export function prepararInterfazJuego(state, contruirEspectadorCb) {
     if(cajasListas) cajasListas.classList.add('oculto-juego');
     if(panelConfig) panelConfig.classList.add('oculto-juego');
 
-    // Activar la Mesa Circular
     document.getElementById('pantallaLobby').classList.add('mesa-activa');
     
     const tituloEsp = document.getElementById('tituloEspectando');
@@ -110,7 +110,6 @@ export function prepararInterfazJuego(state, contruirEspectadorCb) {
             document.getElementById('panelEspectadorUI').appendChild(btnLoteria);
         }
         
-        // MOSTRAR BOTÓN DE CHAT FLOTANTE
         const btnChatMovil = document.getElementById('btnAbrirChatMovil');
         if(btnChatMovil) btnChatMovil.style.display = 'flex';
     }
@@ -130,7 +129,6 @@ export function mostrarResultados(datos) {
     document.getElementById('modalVotacion').style.display = 'none';
     document.getElementById('modalSinCartas').style.display = 'none';
     
-    // OCULTAR ELEMENTOS DE CHAT IN-GAME
     document.getElementById('btnAbrirChatMovil').style.display = 'none';
     document.getElementById('chatIngameContenedor').style.display = 'none';
 
@@ -148,21 +146,17 @@ export function mostrarResultados(datos) {
     ranking.forEach((jugador, i) => {
         let detallesCartas = '<p style="margin:5px 0; color:#94a3b8;">Se le fueron tarjetas: <b>NO</b></p>';
         
-        // Verificar si existen cartas perdidas en el arreglo "perdidas"
         if (jugador.perdidas && jugador.perdidas.length > 0) {
-            // Mapeamos el arreglo ['Carta 42', 'Carta 34'] para sacar los nombres reales
             let listaBullets = jugador.perdidas.map(carta => {
-                let num = carta.split(' ')[1]; // Extrae el número después del espacio
+                let num = carta.split(' ')[1]; 
                 let nombreReal = CARTAS_LOTERIA[num] ? CARTAS_LOTERIA[num].nombre : carta;
                 return `<li>${nombreReal}</li>`;
-            }).join(''); // Los unimos todos
+            }).join(''); 
 
             detallesCartas = `
                 <div class="analisis-scroll">
                     <p style="margin: 0 0 8px 0; color: #f87171; font-weight: 600;">Se le fueron tarjetas: Sí</p>
-                    <ul>
-                        ${listaBullets}
-                    </ul>
+                    <ul>${listaBullets}</ul>
                 </div>
             `;
         }
@@ -219,4 +213,61 @@ export function pintarSalasPublicas(salas) {
             </tr>`;
         });
     }
+}
+
+// ==========================================
+// NUEVO: FUNCIONES DEL CREADOR DE TABLILLAS
+// ==========================================
+export function inicializarCreador(state, CARTAS_DICCIONARIO) {
+    const gridCat = document.getElementById('creadorCatalogoGrid');
+    gridCat.innerHTML = '';
+    
+    // Iteramos por las 54 cartas para inyectarlas en el panel derecho
+    for (let i = 1; i <= 54; i++) {
+        const strNum = i.toString();
+        const info = CARTAS_DICCIONARIO[strNum];
+        if (info) {
+            gridCat.innerHTML += `
+                <div class="carta-catalogo" data-numero="${strNum}" draggable="true">
+                    <img src="${info.img}" draggable="false" title="${info.nombre}">
+                    <!-- NUEVO: Nombre de la carta -->
+                    <div class="nombre-carta-catalogo" title="${info.nombre}">${info.nombre}</div>
+                </div>
+            `;
+        }
+    }
+    actualizarCreadorUI(state, CARTAS_DICCIONARIO);
+}
+
+export function actualizarCreadorUI(state, CARTAS_DICCIONARIO) {
+    // 1. DIBUJAR LA CUADRÍCULA (16 Espacios)
+    const gridTab = document.getElementById('creadorTablillaGrid');
+    gridTab.innerHTML = '';
+    let llenas = 0;
+
+    for (let i = 0; i < 16; i++) {
+        const num = state.creadorCartas[i];
+        let content = '';
+        if (num !== null && CARTAS_DICCIONARIO[num]) {
+            content = `<img src="${CARTAS_DICCIONARIO[num].img}" draggable="false">`;
+            llenas++;
+        }
+        gridTab.innerHTML += `<div class="creador-slot" data-index="${i}">
+            ${content}
+        </div>`;
+    }
+
+    // 2. ACTUALIZAR CONTADOR Y BOTÓN GUARDAR
+    document.getElementById('creadorContador').textContent = `${llenas}/16`;
+    document.getElementById('btnGuardarCreador').disabled = (llenas !== 16);
+
+    // 3. PINTAR BORDES VERDES EN EL CATÁLOGO (Si la carta está seleccionada)
+    document.querySelectorAll('.carta-catalogo').forEach(el => {
+        const strNum = el.dataset.numero;
+        if (state.creadorCartas.includes(strNum)) {
+            el.classList.add('en-tablilla');
+        } else {
+            el.classList.remove('en-tablilla');
+        }
+    });
 }

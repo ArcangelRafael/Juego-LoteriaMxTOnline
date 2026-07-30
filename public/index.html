@@ -68,6 +68,39 @@
         </div>
     </div>
 
+    <!-- NUEVO: MODAL CREADOR DE TABLILLAS -->
+    <div id="modalCreador" class="modal-overlay" style="display:none; padding: 10px;">
+        <div class="glass-panel creador-container">
+            <div class="creador-header">
+                <h2 class="text-highlight m-0">Creador de Tablillas</h2>
+                <button id="btnCerrarCreador" class="btn-no" style="padding: 5px 15px;">X</button>
+            </div>
+            
+            <div class="creador-body">
+                <!-- Izquierda: Tablilla de 16 -->
+                <div class="creador-tablilla-area">
+                    <h3 class="text-center" style="margin-top:0;">Tu Tablilla (<span id="creadorContador">0/16</span>)</h3>
+                    <div id="creadorTablillaGrid" class="creador-grid">
+                        <!-- Slots inyectados por JS -->
+                    </div>
+                    <div class="creador-acciones">
+                        <button id="btnReiniciarCreador" class="btn-neutral">Vaciar</button>
+                        <button id="btnGuardarCreador" class="btn-green" disabled>GUARDAR Y BLOQUEAR</button>
+                    </div>
+                </div>
+                
+                <!-- Derecha: Catalogo 54 Cartas -->
+                <div class="creador-catalogo-area">
+                    <h3 class="text-center" style="margin-top:0;">Catálogo de Cartas</h3>
+                    <p class="text-muted text-center" style="font-size:12px; margin-top:-10px;">Haz TAP o arrastra hacia tu tablilla</p>
+                    <div id="creadorCatalogoGrid" class="catalogo-grid">
+                        <!-- 54 cartas inyectadas por JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MENU PRINCIPAL (EXPLORADOR) -->
     <div id="pantallaMenu" class="seccion activa menu-principal-container glass-panel">
         <h1 class="main-title">Lotería Multijugador</h1>
@@ -198,7 +231,6 @@
         <div id="panelEspectadorUI" class="glass-panel espectador-panel" style="display:none;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h3 class="list-title m-0">Mostrar juego de:</h3>
-                <!-- Botón de minimizar -->
                 <button id="btnMinimizarPanel" style="background:transparent; border:none; color:var(--text-muted); font-size:28px; line-height:1; padding:0 5px; font-weight:800;">-</button>
             </div>
             
@@ -206,10 +238,15 @@
                 <label class="checkbox-label mr-3"><input type="checkbox" id="checkTodos"> TODOS</label>
                 <span id="listaChecksJugadores"></span>
             </div>
-            <!-- El botón de Lotería se inyectará aquí abajo automáticamente por ui.js sin ser ocultado -->
         </div>
 
         <div id="contenedorTablillas"></div>
+        
+        <!-- NUEVO: Botón Creador (Exclusivo en el lobby) -->
+        <div id="contenedorBtnCreador" style="text-align:center; margin-top: 40px; width: 100%; display:none;">
+            <button id="btnAbrirCreador" class="btn-blue" style="font-size: 16px; padding: 12px 30px; box-shadow: 0 0 20px rgba(59,130,246,0.4);">CREA TU PROPIA TABLILLA</button>
+        </div>
+
         <div id="contenedorEspectador"></div>
     </div>
 

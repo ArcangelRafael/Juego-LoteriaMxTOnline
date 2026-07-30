@@ -31,7 +31,7 @@ export const CARTAS_LOTERIA = {
     "28": { nombre: "El Ataque del Hombre Invisible", img: "/assets/img/cartas/28.webp" },
     "29": { nombre: "Marcos!", img: "/assets/img/cartas/29.webp" },
     "30": { nombre: "Daddy Yankee", img: "/assets/img/cartas/30.webp" },
-    "31": { nombre: "Los Detenidos", img: "/assets/img/cartas/31.webp" },
+    "31": { nombre: "El Musico Zoofilico Necrofilo", img: "/assets/img/cartas/31.webp" },
     "32": { nombre: "El Ramiro", img: "/assets/img/cartas/32.webp" },
     "33": { nombre: "El Ramiro Caliente", img: "/assets/img/cartas/33.webp" },
     "34": { nombre: "El que quedo asi 🤡", img: "/assets/img/cartas/34.webp" },

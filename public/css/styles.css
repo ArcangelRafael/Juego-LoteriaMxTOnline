@@ -106,13 +106,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     font-size: 3.5em; 
     margin-bottom: 10px; 
     background: linear-gradient(to right, #38bdf8, #818cf8); 
-    
-    /* Propiedad estándar (elimina el warning) */
     background-clip: text; 
-    
-    /* Prefijo de respaldo */
     -webkit-background-clip: text; 
-    
     -webkit-text-fill-color: transparent; 
 }
 .subtitle { color: var(--text-muted); margin-bottom: 40px; font-size: 1.2em; }
@@ -138,21 +133,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
 .tabla-salas tr:hover { background-color: rgba(255, 255, 255, 0.05); }
 
 /* Header Sala y Layout Principal */
-#pantallaLobby { max-width: 1200px; margin: 0 auto; } /* Centra el lobby y le pone un tope de ancho */
+#pantallaLobby { max-width: 1200px; margin: 0 auto; }
 
 .header-sala { padding: 20px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;}
 .controles-superior { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; flex: 1; justify-content: flex-end;}
-
-/* Evita que el input de nombre se estire a lo loco en monitores anchos */
 #nombreTiempoReal { width: 100%; max-width: 280px; } 
-
 .input-foto-label { cursor: pointer; display: inline-block; margin: 0; }
 .reloj-inactividad { color: #fca5a5; font-weight: 600; padding: 10px 15px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); }
 
 /* Columnas Lobby */
-.contenedor-principal { display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap; justify-content: center; } /* Centra el contenido */
-
-/* Le quitamos el flex: 1 infinito y le ponemos un tope sano (600px) */
+.contenedor-principal { display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
 .columna-listas { display: flex; flex-direction: column; gap: 25px; flex: 0 1 600px; width: 100%; min-width: 300px;}
 .columna-herramientas { display: flex; flex-direction: column; gap: 25px; flex: 0 1 350px; width: 100%; }
 
@@ -187,10 +177,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
 @keyframes pulseLoteria { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 .carta-griton { font-size: 2em; font-weight: 800; text-shadow: 0 2px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; gap: 20px;}
 
-/* TABLILLAS Y CARTAS (Perspectiva) */
+/* TABLILLAS Y CARTAS */
 #contenedorTablillas, #contenedorEspectador { display: flex; flex-wrap: wrap; gap: 25px; margin-top: 20px; justify-content: center; }
 .tablilla { 
-    background: #e2e8f0; /* Fondo carta física */
+    background: #e2e8f0; 
     padding: 15px; 
     border-radius: 8px; 
     width: 240px; 
@@ -210,7 +200,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
 .grid-cartas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .carta { 
     background-color: #f1f5f9; 
-    aspect-ratio: 47 / 73; /* Proporción carta tradicional */
+    aspect-ratio: 47 / 73; 
     display: flex; align-items: center; justify-content: center; 
     font-size: 14px; font-weight: bold; color: #94a3b8;
     position: relative; user-select: none; border-radius: 4px;
@@ -228,7 +218,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     background: rgba(0,0,0,0.4); border-radius: 4px; z-index: 1;
 }
 
-/* Centrado perfecto para cualquier tipo de marca */
 .palomita { 
     position: absolute; 
     font-size: 35px; 
@@ -243,13 +232,27 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     height: 100%;
 }
 
-/* Estilo para las imágenes de peso, frijol y arroz */
 .ficha-img {
     width: 45px;
     height: 45px;
     object-fit: contain;
-    filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.8)); /* Sombra para dar volumen */
-    transform: scale(1.1); /* Hacerlo un poquito más grande */
+    filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.8)); 
+    transform: scale(1.1); 
+}
+
+/* =========================================
+   ESTILOS PARA LAS FOTOS DE LOS GANADORES
+   ========================================= */
+.foto-ganador-oro {
+    width: 150px;
+    height: 150px;
+    object-fit: cover; /* Evita que las imágenes se deformen o aplasten */
+    border-radius: 50%; /* Convierte la foto en un círculo perfecto */
+    border: 4px solid var(--accent-gold); /* Borde dorado */
+    box-shadow: 0 0 20px rgba(250, 204, 21, 0.6); /* Resplandor dorado */
+    margin: 0 auto 20px auto; /* Lo centra horizontalmente y le da espacio abajo */
+    display: block;
+    background-color: var(--bg-dark); /* Fondo oscuro por si suben un PNG transparente */
 }
 
 /* Pantalla Final */
@@ -257,459 +260,153 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     font-size: 4em; 
     margin-bottom: 10px; 
     background: linear-gradient(to bottom, #fde047, #b45309); 
-    
-    /* Propiedad estándar (elimina el warning) */
     background-clip: text; 
-    
-    /* Prefijo de respaldo para navegadores antiguos basados en WebKit */
     -webkit-background-clip: text; 
-    
     -webkit-text-fill-color: transparent; 
     filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.3));
 }
 .ganador-box { margin-bottom: 30px; }
 .ranking-container { display: inline-block; padding: 30px; min-width: 500px; margin-bottom: 30px; }
 .ranking-lista { font-size: 1.1em; padding: 0; margin: 0; list-style: none;}
-.ranking-lista li { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-panel); }
+.ranking-lista li { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-panel); display: flex; align-items: center;}
 .ranking-lista li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
+.ranking-lista img { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; border: 2px solid var(--accent-blue); margin: 0 20px; background: rgba(0, 0, 0, 0.3); flex-shrink: 0; }
+.ranking-lista span { font-weight: 600; }
 .caja-analisis { max-width: 600px; margin: 0 auto 40px auto; padding: 30px; text-align: left; }
 .acciones-finales { display: flex; justify-content: center; gap: 20px; }
 
 details { margin-top: 15px; font-size: 0.9em; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid var(--border-panel); }
 summary { cursor: pointer; font-weight: 600; color: var(--accent-blue); outline: none; margin-bottom: 8px;}
+.analisis-scroll { max-height: 120px; overflow-y: auto; background: rgba(0, 0, 0, 0.3); padding: 10px 15px; border-radius: 6px; margin-top: 10px; border: 1px solid rgba(255,255,255,0.1); text-align: left;}
+.analisis-scroll::-webkit-scrollbar { width: 6px; }
+.analisis-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+.analisis-scroll ul { margin: 5px 0 0 0; padding-left: 20px; color: #e2e8f0; }
+.analisis-scroll li { margin-bottom: 4px !important; border-bottom: none !important; font-size: 0.95em !important; }
 
-/* Notificaciones flotantes */
-.notificacion-flotante { position: fixed; bottom: 30px; right: 30px; background: rgba(16, 185, 129, 0.9); backdrop-filter: blur(5px); color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); font-weight: 600; display: none; z-index: 100;}
+/* Botón Unirse y Bloqueo */
+.btn-unirse-tabla { background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-hover)); color: #ffffff !important; border: none; padding: 8px 16px; font-size: 13px; border-radius: 6px; font-weight: 700; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); transition: all 0.2s ease; }
+.btn-unirse-tabla:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4); }
+.btn-unirse-tabla:disabled { background: #334155; color: #94a3b8 !important; box-shadow: none; cursor: not-allowed; }
+.botones-tablilla-container { display: flex; gap: 10px; justify-content: center; margin-top: 15px; width: 100%; }
+.btn-bloqueo { width: 100%; padding: 10px; font-size: 14px; }
 
-/* Estilos para que los botones encajen dentro de la Tablilla */
-.botones-tablilla-container { 
-    display: flex; 
-    gap: 10px; 
-    justify-content: center; 
-    margin-top: 15px; 
-    width: 100%; 
-}
-.btn-bloqueo { 
-    width: 100%; 
-    padding: 10px; 
-    font-size: 14px; 
-}
+/* Transiciones Juego */
+.oculto-juego { animation: colapsarPanel 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards !important; pointer-events: none; overflow: hidden; }
+@keyframes colapsarPanel { 0% { opacity: 1; max-height: 800px; transform: scaleY(1); margin-bottom: 25px; padding-top: 20px; padding-bottom: 20px; border-width: 1px; } 30% { opacity: 0; transform: scaleY(0.95); } 100% { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; border-width: 0; transform: scaleY(0); } }
 
-/* =========================================
-   ANIMACIONES DE TRANSICIÓN DE PARTIDA
-   ========================================= */
+#contenedorTablillas, #contenedorEspectador { align-items: flex-start; }
+.chat-juego { width: 340px; height: 540px; margin-left: 20px; animation: deslizarChat 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+@keyframes deslizarChat { 0% { opacity: 0; transform: translateX(50px) scale(0.9); } 100% { opacity: 1; transform: translateX(0) scale(1); } }
 
-/* Animación para contraer y desaparecer paneles suavemente */
-.oculto-juego {
-    animation: colapsarPanel 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
-    pointer-events: none;
-    overflow: hidden;
-}
+/* Físicas de Gritón y Mesa */
+.imagen-griton { width: 220px; height: 310px; object-fit: cover; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); border: 3px solid #cbd5e1; }
+.carta-lanzada { position: absolute; top: 0; left: 0; animation: lanzarCarta 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+@keyframes lanzarCarta { 0% { opacity: 0; transform: translate(0, -100px) scale(1.3) rotate(0deg); } 100% { opacity: 1; transform: translate(var(--x-final), var(--y-final)) rotate(var(--rot-final)); } }
 
-@keyframes colapsarPanel {
-    0% { opacity: 1; max-height: 800px; transform: scaleY(1); margin-bottom: 25px; padding-top: 20px; padding-bottom: 20px; border-width: 1px; }
-    30% { opacity: 0; transform: scaleY(0.95); }
-    100% { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; border-width: 0; transform: scaleY(0); }
-}
-
-/* Forzar alineación hacia arriba para que el chat y la tablilla no se estiren */
-#contenedorTablillas, #contenedorEspectador { 
-    align-items: flex-start; 
-}
-
-/* Estilos del chat cuando se muda a la zona de juego central */
-.chat-juego {
-    width: 340px;
-    height: 540px; /* Alineado aproximadamente con la altura de la tablilla */
-    margin-left: 20px;
-    animation: deslizarChat 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes deslizarChat {
-    0% { opacity: 0; transform: translateX(50px) scale(0.9); }
-    100% { opacity: 1; transform: translateX(0) scale(1); }
-}
-
-/* =========================================
-   ESTANDARIZACIÓN DEL GRITÓN
-   ========================================= */
-.imagen-griton {
-    width: 220px; /* Antes 180px */
-    height: 310px; /* Antes 260px */
-    object-fit: cover;
-    border-radius: 12px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-    border: 3px solid #cbd5e1;
-}
-
-/* =========================================
-   MODO MESA CIRCULAR (INGAME)
-   ========================================= */
-.mesa-activa {
-    overflow: visible; 
-}
-
-/* Tu tablilla: Un poco más pequeña y anclada más abajo para no tapar al Gritón */
-.mesa-activa #contenedorTablillas {
-    position: absolute;
-    bottom: 15px;
-    left: 42%;
-    transform: translateX(-50%) scale(1); /* Cambiado de 0.85 a 1 para que sea más grande */
-    z-index: 20;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px; 
-}
-
-/* El Gritón flotando un poco más arriba */
-.mesa-activa .zona-griton {
-    top: 28%; /* Estaba en 35% */
-}
-
-/* Chat en la esquina inferior derecha */
-.mesa-activa .chat-juego {
-    position: absolute !important;
-    bottom: 30px;
-    right: 30px;
-    margin: 0;
-    width: 320px;
-    height: 400px;
-    z-index: 30;
-    animation: deslizarChat 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    background: rgba(15, 23, 42, 0.85); /* Un poco más oscuro para resaltar */
-}
-
-/* El menú de checkboxes de espectadores arriba a la izquierda */
-.mesa-activa #panelEspectadorUI {
-    position: absolute;
-    bottom: 15px;
-    left: 62%; /* Ligeramente a la derecha */
-    transform: translateX(-50%);
-    width: 220px;
-    padding: 15px;
-    border-radius: 12px;
-    background: rgba(15, 23, 42, 0.85);
-    border: 1px solid var(--border-panel);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-    z-index: 30;
-    margin: 0;
-}
-
-.mesa-activa #panelEspectadorUI h3 { 
-    margin: 0; border: none; padding: 0; font-size: 16px; 
-}
-
-.mesa-activa #btnLoteria {
-    margin-top: 15px;
-    width: 100%;
-    font-size: 22px;
-    padding: 12px;
-    animation: pulseLoteria 2s infinite;
-}
-
-.mesa-activa #listaChecksJugadores {
-    display: flex;
-    flex-direction: column; /* Apilados verticalmente de nuevo */
-    gap: 5px;
-    max-height: 250px;
-    overflow-y: auto;
-}
+.mesa-activa { overflow: visible; }
+.mesa-activa #contenedorTablillas { position: absolute; bottom: 15px; left: 42%; transform: translateX(-50%) scale(1); z-index: 20; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+.mesa-activa .zona-griton { top: 28%; }
+.mesa-activa .chat-juego { position: absolute !important; bottom: 30px; right: 30px; margin: 0; width: 320px; height: 400px; z-index: 30; animation: deslizarChat 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; background: rgba(15, 23, 42, 0.85); }
+.mesa-activa #panelEspectadorUI { position: absolute; bottom: 15px; left: 62%; transform: translateX(-50%); width: 220px; padding: 15px; border-radius: 12px; background: rgba(15, 23, 42, 0.85); border: 1px solid var(--border-panel); box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 30; margin: 0; }
+.mesa-activa #panelEspectadorUI h3 { margin: 0; border: none; padding: 0; font-size: 16px; }
+.mesa-activa #btnLoteria { margin-top: 15px; width: 100%; font-size: 22px; padding: 12px; animation: pulseLoteria 2s infinite; }
+.mesa-activa #listaChecksJugadores { display: flex; flex-direction: column; gap: 5px; max-height: 250px; overflow-y: auto; }
 .mesa-activa #listaChecksJugadores::-webkit-scrollbar { width: 4px; }
 .mesa-activa #listaChecksJugadores::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
 
-/* Contenedor transparente de enemigos */
-.mesa-activa #contenedorEspectador {
-    position: absolute;
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 100%;
-    pointer-events: none; 
-    margin: 0;
-}
+.mesa-activa #contenedorEspectador { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; margin: 0; }
+.tablilla-enemiga { position: absolute; transform: translate(-50%, -50%) scale(0.65) rotate(var(--rotacion, 0deg)); pointer-events: auto; box-shadow: 0 15px 35px rgba(0,0,0,0.8); transition: transform 0.4s ease, left 0.8s ease, top 0.8s ease; z-index: 10; }
+.tablilla-enemiga:hover { transform: translate(-50%, -50%) scale(0.9) rotate(var(--rotacion, 0deg)); z-index: 100; }
 
-/* Las tablillas enemigas calculadas con trigonometría */
-.tablilla-enemiga {
-    position: absolute;
-    /* Aplicamos la variable de rotación dinámica calculada en JS */
-    transform: translate(-50%, -50%) scale(0.65) rotate(var(--rotacion, 0deg));
-    pointer-events: auto; 
-    box-shadow: 0 15px 35px rgba(0,0,0,0.8);
-    transition: transform 0.4s ease, left 0.8s ease, top 0.8s ease;
-    z-index: 10;
-}
+/* Chat y Botones Flotantes */
+.notificacion-flotante { position: fixed; bottom: 30px; right: 30px; background: rgba(16, 185, 129, 0.9); backdrop-filter: blur(5px); color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); font-weight: 600; display: none; z-index: 100;}
+.chat-ingame-flotante { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; align-items: center; gap: 10px; padding: 10px 25px; border-radius: 50px; width: 500px; max-width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.8); background: rgba(15, 23, 42, 0.95); border: 2px solid var(--accent-blue); }
+.chat-ingame-flotante input { outline: none; flex: 1; font-size: 16px; font-weight: 600; color: white; min-width: 0; }
+.btn-flotante-chat { position: fixed; bottom: 30px; left: 30px; width: 55px; height: 55px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-hover)); color: white; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 300; border: none; transition: transform 0.2s; }
+.btn-flotante-chat:active { transform: scale(0.9); }
 
-.tablilla-enemiga:hover {
-    /* Mantiene su ángulo pero aumenta su escala al poner el mouse */
-    transform: translate(-50%, -50%) scale(0.9) rotate(var(--rotacion, 0deg));
-    z-index: 100;
-}
+.burbuja-chat { position: absolute; bottom: 105%; left: 50%; background: white; color: #1e293b; padding: 12px 18px; border-radius: 20px; font-size: 14px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,0.6); z-index: 250; pointer-events: none; max-width: 220px; text-align: center; white-space: normal; word-wrap: break-word; animation: flotarDesvanecer 5.5s ease-in-out forwards; }
+.burbuja-chat::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -8px; border-width: 8px; border-style: solid; border-color: white transparent transparent transparent; }
+@keyframes flotarDesvanecer { 0% { opacity: 0; transform: translate(-50%, 20px) scale(0.8) rotate(calc(-1 * var(--rotacion, 0deg))); } 10% { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(calc(-1 * var(--rotacion, 0deg))); } 85% { opacity: 1; transform: translate(-50%, -15px) scale(1) rotate(calc(-1 * var(--rotacion, 0deg))); } 100% { opacity: 0; transform: translate(-50%, -40px) scale(0.8) rotate(calc(-1 * var(--rotacion, 0deg))); } }
+.burbuja-chat-contenido { display: flex; align-items: center; gap: 10px; text-align: left; }
+.burbuja-foto { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #cbd5e1; }
 
-/* Chat in game */
-.chat-ingame-flotante {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 300;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 25px;
-    border-radius: 50px;
-    width: 500px;
-    max-width: 90%;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-    background: rgba(15, 23, 42, 0.95);
-    border: 2px solid var(--accent-blue);
-}
-
-.chat-ingame-flotante input { outline: none; flex: 1; font-size: 16px; font-weight: 600; color: white; }
-
-/* 4. Burbujas de Chat sobre Tablillas */
-.burbuja-chat {
-    position: absolute;
-    bottom: 105%; /* Aparece justo arriba de la tablilla */
-    left: 50%;
-    background: white;
-    color: #1e293b;
-    padding: 12px 18px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 700;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.6);
-    z-index: 250;
-    pointer-events: none;
-    max-width: 220px;
-    text-align: center;
-    white-space: normal;
-    word-wrap: break-word;
-    animation: flotarDesvanecer 5.5s ease-in-out forwards;
-}
-
-/* El piquito de la burbuja (estilo comic) */
-.burbuja-chat::after {
-    content: ''; position: absolute; top: 100%; left: 50%; margin-left: -8px;
-    border-width: 8px; border-style: solid;
-    border-color: white transparent transparent transparent;
-}
-
-@keyframes flotarDesvanecer {
-    0% { opacity: 0; transform: translate(-50%, 20px) scale(0.8) rotate(calc(-1 * var(--rotacion, 0deg))); }
-    10% { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(calc(-1 * var(--rotacion, 0deg))); }
-    85% { opacity: 1; transform: translate(-50%, -15px) scale(1) rotate(calc(-1 * var(--rotacion, 0deg))); }
-    100% { opacity: 0; transform: translate(-50%, -40px) scale(0.8) rotate(calc(-1 * var(--rotacion, 0deg))); }
-}
+.espectador-panel.minimizado { background: rgba(15, 23, 42, 0.4) !important; backdrop-filter: blur(4px); border-color: transparent; }
 
 /* =========================================
-   FÍSICAS DE CARTAS Y CHAT MEJORADO
+   NUEVO: ESTILOS DEL CREADOR DE TABLILLAS
    ========================================= */
-.carta-lanzada {
+.creador-container { width: 100%; max-width: 1000px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-dark); }
+.creador-header { padding: 15px 20px; border-bottom: 1px solid var(--border-panel); display: flex; justify-content: space-between; align-items: center; }
+.creador-body { display: flex; flex-wrap: wrap; flex: 1; overflow: hidden; }
+
+/* Sección Izquierda: Tablilla */
+.creador-tablilla-area { flex: 1; min-width: 320px; padding: 20px; border-right: 1px solid var(--border-panel); display: flex; flex-direction: column; align-items: center; overflow-y: auto;}
+.creador-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; width: 260px; margin-bottom: 20px; background: #e2e8f0; padding: 10px; border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+.creador-slot { aspect-ratio: 47/73; background: #cbd5e1; border: 2px dashed #94a3b8; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; position: relative; transition: all 0.2s;}
+.creador-slot:hover { border-color: var(--accent-blue); background: #f1f5f9; }
+.creador-slot img { width: 100%; height: 100%; object-fit: cover; }
+.creador-acciones { display: flex; gap: 10px; width: 100%; justify-content: center; flex-wrap: wrap;}
+
+/* Sección Derecha: Catálogo */
+.creador-catalogo-area { flex: 2; min-width: 350px; padding: 20px; overflow-y: auto; max-height: calc(90vh - 65px); }
+.catalogo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; }
+.carta-catalogo { aspect-ratio: 47/73; cursor: pointer; border-radius: 6px; overflow: hidden; border: 3px solid transparent; transition: transform 0.2s, filter 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);}
+.carta-catalogo:hover { transform: scale(1.1); }
+.carta-catalogo img { width: 100%; height: 100%; object-fit: cover; }
+.en-tablilla { border: 3px solid var(--accent-green); filter: brightness(0.5); pointer-events: auto; }
+
+/* =========================================
+   TEXTO CARTA Y ANIMACIONES CREADOR (NUEVO)
+   ========================================= */
+
+/* Posicionar la tarjeta del catálogo para poder encimarle el texto */
+.carta-catalogo {
+    position: relative; /* Necesario para el texto absoluto */
+}
+
+/* Etiqueta de nombre truncado con ellipsis */
+.nombre-carta-catalogo {
     position: absolute;
-    top: 0;
+    bottom: 0;
     left: 0;
-    animation: lanzarCarta 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-@keyframes lanzarCarta {
-    0% { opacity: 0; transform: translate(0, -100px) scale(1.3) rotate(0deg); }
-    100% { opacity: 1; transform: translate(var(--x-final), var(--y-final)) rotate(var(--rot-final)); }
-}
-
-/* Alineación de la foto de perfil dentro de la burbuja */
-.burbuja-chat-contenido {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-align: left;
-}
-
-.burbuja-foto {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-    border: 1px solid #cbd5e1;
-}
-
-/* =========================================
-   PANTALLA DE RESULTADOS (RANKING)
-   ========================================= */
-
-/* Alinear horizontalmente cada fila del ranking */
-#listaRankingFinal li {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    margin-bottom: 15px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid var(--border-panel);
-    font-size: 1.1em;
-}
-
-/* Estandarizar TODAS las fotos de los jugadores en los resultados */
-#listaRankingFinal img {
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 50%; /* Las hace circulares como avatares profesionales */
-    border: 2px solid var(--accent-blue);
-    margin: 0 20px;
-    background: rgba(0, 0, 0, 0.3);
-    flex-shrink: 0; /* Evita que la imagen se aplaste si el texto es muy largo */
-}
-
-/* Estilo para los nombres y los textos de marcas */
-#listaRankingFinal span {
-    font-weight: 600;
-}
-
-/* =========================================
-   SCROLL INTERNO PARA ANÁLISIS DE CARTAS
-   ========================================= */
-.analisis-scroll {
-    max-height: 120px; /* Altura máxima antes de que aparezca el scroll */
-    overflow-y: auto;
-    background: rgba(0, 0, 0, 0.3);
-    padding: 10px 15px;
-    border-radius: 6px;
-    margin-top: 10px;
-    border: 1px solid rgba(255,255,255,0.1);
-    text-align: left;
-}
-
-/* Diseño elegante de la barra de scroll */
-.analisis-scroll::-webkit-scrollbar { width: 6px; }
-.analisis-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
-
-/* Estilo de la lista con viñetas (bullets) */
-.analisis-scroll ul {
-    margin: 5px 0 0 0;
-    padding-left: 20px;
-    list-style-type: disc; /* Pone los puntitos */
-    color: #e2e8f0;
-}
-.analisis-scroll li {
-    margin-bottom: 4px !important;
-    padding-bottom: 0 !important;
-    border-bottom: none !important;
-    font-size: 0.95em !important;
-}
-
-/* =========================================
-   BOTÓN TABLA SALAS PÚBLICAS
-   ========================================= */
-.btn-unirse-tabla {
-    background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-hover));
-    color: #ffffff !important; /* Texto blanco asegurado */
-    border: none;
-    padding: 8px 16px;
-    font-size: 13px;
-    border-radius: 6px;
+    width: 100%;
+    background: rgba(15, 23, 42, 0.85); /* Fondo oscuro semitransparente */
+    color: #f8fafc;
+    font-size: 10px;
+    text-align: center;
+    padding: 4px 2px;
+    white-space: nowrap; /* Evita que el texto baje de línea */
+    overflow: hidden; /* Oculta lo que se desborde */
+    text-overflow: ellipsis; /* Pone los "..." automáticamente */
     font-weight: 700;
-    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
-    transition: all 0.2s ease;
+    backdrop-filter: blur(2px);
+    pointer-events: none; /* Evita que el texto interfiera con el clic de la imagen */
 }
 
-.btn-unirse-tabla:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
-}
-
-.btn-unirse-tabla:disabled {
-    background: #334155;
-    color: #94a3b8 !important;
-    box-shadow: none;
-    cursor: not-allowed;
-}
-
-/* =========================================
-   MINIMIZAR PANEL Y CHAT MÓVIL (NUEVAS FUNCIONES)
-   ========================================= */
-
-/* Transparencia para el panel minimizado */
-.espectador-panel.minimizado {
-    background: rgba(15, 23, 42, 0.4) !important;
-    backdrop-filter: blur(4px);
-    border-color: transparent;
-}
-
-/* Botón flotante de chat (Móviles) */
-.btn-flotante-chat {
+/* Clase para la animación fantasma (FLIP) de la carta volando */
+.ghost-carta-vuelo {
     position: fixed;
-    bottom: 30px;
-    left: 30px;
-    width: 55px;
-    height: 55px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-hover));
-    color: white;
-    font-size: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    z-index: 300;
-    border: none;
-    transition: transform 0.2s;
-}
-.btn-flotante-chat:active {
-    transform: scale(0.9);
-}
-
-/* Ajuste para que el input del chat ingame se adapte a pantallas chicas sin empujar el botón de enviar */
-#chatIngameContenedor input {
-    min-width: 0; 
+    z-index: 99999;
+    object-fit: cover;
+    border-radius: 6px;
+    pointer-events: none;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); /* Curva de aceleración realista */
 }
 
 /* =========================================
    RESPONSIVE: AJUSTES EXCLUSIVOS PARA CELULARES
    ========================================= */
 @media (max-width: 768px) {
-    /* Bajar el Gritón MÁS todavía */
-    .mesa-activa .zona-griton {
-        position: absolute;
-        top: 38%; /* ¡Bajó drásticamente del 26% al 38%! */
-        left: 50%;
-        transform: translateX(-50%) scale(0.85); 
-        margin: 0;
-        width: 100%;
-        z-index: 5;
-    }
-
-    /* Centrar perfectamente tu tablilla y hacerla MÁS GRANDE */
-    .mesa-activa #contenedorTablillas {
-        left: 50%;
-        bottom: 15px; 
-        transform: translateX(-50%) scale(1.08); 
-        z-index: 20;
-    }
-
-    /* Acomodar el menú colapsable a la derecha para no tapar la tablilla principal */
-    .mesa-activa #panelEspectadorUI {
-        left: auto;
-        right: 15px; 
-        bottom: 15px; 
-        transform: none; 
-        width: 150px; 
-        z-index: 30; 
-    }
-
-    /* Hacer el botón de lotería más compacto */
-    .mesa-activa #btnLoteria {
-        font-size: 16px;
-        padding: 10px;
-    }
-
-    /* Alejamos un poco las tablillas enemigas para que no saturen la pantalla chica */
-    .tablilla-enemiga {
-        transform: translate(-50%, -50%) scale(0.55) rotate(var(--rotacion, 0deg)) !important;
-    }
+    .mesa-activa .zona-griton { position: absolute; top: 38%; left: 50%; transform: translateX(-50%) scale(0.85); margin: 0; width: 100%; z-index: 5; }
+    .mesa-activa #contenedorTablillas { left: 50%; bottom: 15px; transform: translateX(-50%) scale(1.08); z-index: 20; }
+    .mesa-activa #panelEspectadorUI { left: auto; right: 15px; bottom: 15px; transform: none; width: 150px; z-index: 30; }
+    .mesa-activa #btnLoteria { font-size: 16px; padding: 10px; }
+    .tablilla-enemiga { transform: translate(-50%, -50%) scale(0.55) rotate(var(--rotacion, 0deg)) !important; }
+    .tablilla-enemiga:hover { transform: translate(-50%, -50%) scale(0.7) rotate(var(--rotacion, 0deg)) !important; }
     
-    .tablilla-enemiga:hover {
-        transform: translate(-50%, -50%) scale(0.7) rotate(var(--rotacion, 0deg)) !important;
-    }
+    /* Responsividad del Creador de Tablillas */
+    .creador-tablilla-area { border-right: none; border-bottom: 2px solid var(--border-panel); padding-bottom: 20px;}
+    .creador-catalogo-area { max-height: 400px; }
 }
