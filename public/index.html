@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Lotería Online</title>
+    <link rel="icon" type="image/x-icon" href="/assets/img/ico.ico">
     <!-- Fuente moderna para darle aspecto profesional -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
@@ -175,23 +176,23 @@
                     
                     <div class="control-group">
                         <span class="input-label">Escribe un nombre de usuario</span>
-                        <input type="text" id="nombreTiempoReal" class="input-dark" placeholder="Este nombre es el que verán todos" style="margin-bottom: 0; width: 250px;">
+                        <input type="text" id="nombreTiempoReal" class="input-dark" placeholder="Todos veran el nombre" style="margin-bottom: 0; width: 250px;">
                     </div>
                     
                     <div class="control-group">
                         <span class="input-label">Selecciona tu ficha</span>
                         <select id="selectFicha" class="input-dark selector-ficha" style="margin-bottom: 0; width: 140px;">
-                            <option value="palomita">✔ Palomita</option>
-                            <option value="peso">🪙 Un Peso</option>
-                            <option value="frijol">🫘 Frijol</option>
-                            <option value="arroz">🍚 Arroz</option>
+                            <option value="palomita">Palomita</option>
+                            <option value="peso">Un Peso</option>
+                            <option value="frijol">Frijol</option>
+                            <option value="arroz">Arroz</option>
                         </select>
                     </div>
                     
                     <div class="control-group">
                         <span class="input-label">Selecciona una foto</span>
                         <label class="btn-subir-foto" style="margin-bottom: 0; white-space: nowrap; height: 42px;">
-                            <span style="font-size: 16px;">📷</span> Subir
+                            <span style="font-size: 16px;"></span> Subir Imagen
                             <input type="file" id="inputFoto" accept="image/*" style="display:none;">
                         </label>
                     </div>
@@ -339,6 +340,37 @@
         <button id="btnEnviarChatIngame" class="btn-blue" style="padding: 8px 16px; border-radius: 20px; font-size: 14px;">Enviar</button>
     </div>
 
+    <!-- Modal Confirmar Espectador -->
+    <div id="modalConfirmarEspectador" class="modal-overlay">
+        <!-- ... (tu modal actual) ... -->
+    </div>
+
+    <!-- =========================================
+         FOOTER: Firma + Boton
+         ========================================= -->
+    <footer class="app-footer">
+        <div class="footer-left-section">
+            <div class="footer-top-row">
+                <div class="footer-credits">
+                    <span class="powered">PoWeRed bY;</span>
+                    <a href="https://www.instagram.com/sir_arcangelrafael_elmagnanimo/" target="_blank" class="author">Arc RafaeLuis IX</a>
+                </div>
+                
+                <!-- EL BOTÓN CON TOOLTIP -->
+                <a href="https://buymeacoffee.com/luisix" target="_blank" class="custom-bmc-btn tooltip-wrapper" 
+                   data-tooltip="Ayuda a comprar un dominio oficial, mensualidad del servidor, traer mejoras y actualizaciones al proyecto; Recaudado: $0.00">
+                    💀 Apoya este proyecto
+                </a>
+            </div>
+            
+            <!-- Enlace Mailto (Asunto corregido a Lotería) -->
+            <a href="mailto:luis17sdm@hotmail.com?cc=rl.duranmoncada@ugto.mx&subject=FEEDBACK%20-%20Loteria%20Online" class="feedback-link">
+                Bugs, dudas o sugerencias ?
+            </a>
+        </div>
+    </footer>
+
+    <!-- Scripts de Socket.io y lógica del cliente -->
     <script src="/socket.io/socket.io.js"></script>
     <script type="module" src="/js/app.js"></script>
 </body>
