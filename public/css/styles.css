@@ -641,3 +641,50 @@ summary { cursor: pointer; font-weight: 600; color: var(--accent-blue); outline:
 #chatIngameContenedor input {
     min-width: 0; 
 }
+
+/* =========================================
+   RESPONSIVE: AJUSTES EXCLUSIVOS PARA CELULARES
+   ========================================= */
+@media (max-width: 768px) {
+    /* Bajar el Gritón para que no se corte por el notch/barra superior */
+    .mesa-activa .zona-griton {
+        position: absolute;
+        top: 12%; 
+        left: 50%;
+        transform: translateX(-50%) scale(0.85); /* 15% más chico para celulares */
+        margin: 0;
+        width: 100%;
+        z-index: 5;
+    }
+
+    /* Centrar perfectamente tu tablilla en la parte inferior */
+    .mesa-activa #contenedorTablillas {
+        left: 50%;
+        bottom: 20px;
+        transform: translateX(-50%) scale(0.95); /* Apenas un 5% más chica para que siga súper jugable */
+    }
+
+    /* Acomodar el menú colapsable a la derecha para no tapar la tablilla principal */
+    .mesa-activa #panelEspectadorUI {
+        left: auto;
+        right: 15px; 
+        bottom: 15px; 
+        transform: none; 
+        width: 150px; 
+    }
+
+    /* Hacer el botón de lotería más compacto */
+    .mesa-activa #btnLoteria {
+        font-size: 16px;
+        padding: 10px;
+    }
+
+    /* Alejamos un poco las tablillas enemigas para que no saturen la pantalla chica */
+    .tablilla-enemiga {
+        transform: translate(-50%, -50%) scale(0.55) rotate(var(--rotacion, 0deg)) !important;
+    }
+    
+    .tablilla-enemiga:hover {
+        transform: translate(-50%, -50%) scale(0.7) rotate(var(--rotacion, 0deg)) !important;
+    }
+}
