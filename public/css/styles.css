@@ -119,6 +119,27 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
 .input-dark:focus { border-color: var(--accent-blue); box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
 .input-dark-sm { padding: 6px 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-panel); color: white; border-radius: 5px; outline: none; width: 150px; }
 
+/* =========================================
+   SELECTORES DESPLEGABLES (CORRECCIÓN DE CONTRASTE)
+   ========================================= */
+#selectFicha, #selectMaxJugadores {
+    background-color: rgba(15, 23, 42, 0.8); /* Fondo base oscuro */
+}
+
+/* Forzamos el color de la lista desplegable en Windows/Mac */
+#selectFicha option, #selectMaxJugadores option {
+    background-color: #0f172a; /* Fondo ultra oscuro para las opciones */
+    color: #f8fafc; /* Texto blanco brillante */
+    font-weight: 600;
+    padding: 10px;
+}
+
+/* Le damos un brillo dorado al seleccionarlo para que resalte */
+#selectFicha:focus, #selectMaxJugadores:focus {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
 .checkbox-label, .radio-label { display: block; margin-bottom: 10px; cursor: pointer; color: var(--text-muted); font-size: 0.9em; }
 .radio-group { margin-bottom: 15px; }
 
@@ -135,8 +156,116 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
 /* Header Sala y Layout Principal */
 #pantallaLobby { max-width: 1200px; margin: 0 auto; }
 
-.header-sala { padding: 20px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;}
-.controles-superior { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; flex: 1; justify-content: flex-end;}
+.header-sala { 
+    padding: 15px 20px; /* Reducido para acortar la altura del rectángulo */
+    margin-bottom: 15px; /* Reducido para acercar las listas de abajo */
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    flex-wrap: wrap; 
+    gap: 15px;
+}
+
+.sala-info-basica { flex: 1; min-width: 200px; }
+
+.controles-superior { 
+    display: flex; 
+    flex-direction: column; /* Obliga a que la fila de arriba y abajo se apilen */
+    gap: 10px; /* Acorta la distancia entre el perfil y los botones de sala */
+    align-items: flex-end; 
+    justify-content: center;
+    flex: 1;
+}
+
+/* Caja de perfil semi-transparente para agrupar */
+.grupo-controles-perfil {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    flex-wrap: wrap;
+}
+
+.grupo-controles-acciones { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+.control-group { display: flex; flex-direction: column; gap: 6px; }
+
+.input-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Unificando alturas y anchos de los inputs */
+.control-group .input-dark { margin-bottom: 0; min-width: 240px; }
+.control-group .selector-ficha { min-width: 140px; padding: 11px 10px; cursor: pointer; }
+
+/* El nuevo botón Premium para Subir Foto */
+.btn-subir-foto {
+    background: linear-gradient(135deg, #334155, #1e293b);
+    color: #e2e8f0;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 0 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    transition: all 0.2s;
+    height: 42px; /* Misma altura matemática que los input-dark */
+    box-sizing: border-box;
+}
+.btn-subir-foto:hover {
+    background: linear-gradient(135deg, var(--accent-blue), #1e3a8a);
+    border-color: #60a5fa;
+    color: white;
+}
+
+.reloj-inactividad { color: #fca5a5; font-weight: 600; padding: 10px 15px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+/* =========================================
+   TOOLTIPS DINÁMICOS CSS
+   ========================================= */
+.tooltip-wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+.tooltip-wrapper[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 120%; /* Aparece justo arriba */
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    color: #f8fafc;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 12px;
+    white-space: pre-wrap; /* Permite saltos de línea */
+    z-index: 1000;
+    border: 1px solid var(--accent-blue);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+    pointer-events: none;
+    width: max-content;
+    max-width: 250px;
+    text-align: center;
+    line-height: 1.4;
+    animation: fadeInTooltip 0.2s ease-out forwards;
+}
+
+@keyframes fadeInTooltip {
+    from { opacity: 0; transform: translate(-50%, 10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
 #nombreTiempoReal { width: 100%; max-width: 280px; } 
 .input-foto-label { cursor: pointer; display: inline-block; margin: 0; }
 .reloj-inactividad { color: #fca5a5; font-weight: 600; padding: 10px 15px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); }
@@ -302,7 +431,15 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.3));
 }
 .ganador-box { margin-bottom: 30px; }
-.ranking-container { display: inline-block; padding: 30px; min-width: 500px; margin-bottom: 30px; }
+
+.ranking-container { 
+    display: inline-block; 
+    padding: 30px; 
+    min-width: 650px; /* Ensanchado para evitar que los textos se apachurren */
+    max-width: 90vw; /* Protección para celulares */
+    margin-bottom: 30px; 
+}
+
 .ranking-lista { font-size: 1.1em; padding: 0; margin: 0; list-style: none;}
 .ranking-lista li { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-panel); display: flex; align-items: center;}
 .ranking-lista li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}

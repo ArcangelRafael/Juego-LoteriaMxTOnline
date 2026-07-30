@@ -11,6 +11,19 @@
     <div id="notificacionFlotante" class="notificacion-flotante"></div>
 
     <!-- Modales -->
+
+    <!-- Modal Confirmar Espectador (NUEVO) -->
+    <div id="modalConfirmarEspectador" class="modal-overlay">
+        <div class="modal-caja warning-glow">
+            <h3 class="text-warning m-0">¡Sala Llena!</h3>
+            <p id="textoConfirmarEspectador" class="modal-text" style="margin-top:15px; font-size: 16px; white-space: pre-wrap;"></p>
+            <div class="modal-buttons">
+                <button id="btnAceptarEspectador" class="btn-si">Sí, entrar como espectador</button>
+                <button id="btnRechazarEspectador" class="btn-no">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modalError" class="modal-overlay">
         <div class="modal-caja danger-glow">
             <h2 class="text-danger" id="tituloModalError">Aviso</h2>
@@ -146,29 +159,62 @@
     <!-- LOBBY & JUEGO -->
     <div id="pantallaLobby" class="seccion">
         <div class="header-sala glass-panel">
-            <div>
-                <h2 id="tituloSala" class="text-highlight m-0"></h2>
-                <h3 id="codigoSalaTexto" class="text-muted m-0"></h3>
-            </div>
-            <div class="controles-superior">
-                <input type="text" id="nombreTiempoReal" class="input-dark" placeholder="Escribe tu nombre aquí...">
-                
-                <!-- NUEVO: Selector de Fichas -->
-                <select id="selectFicha" class="input-dark" style="width: auto; max-width: 140px; padding: 10px; margin: 0;">
-                    <option value="palomita">✔ Verde</option>
-                    <option value="peso">Un Peso</option>
-                    <option value="frijol">Frijol</option>
-                    <option value="arroz">Arroz</option>
-                </select>
-                <label class="btn-neutral input-foto-label">
-                    Subir Foto
-                    <input type="file" id="inputFoto" accept="image/*" style="display:none;">
-                </label>
-                <button id="btnCambiarRol" class="btn-neutral">Cambiar a Espectador</button>
-                <button id="btnIniciar" class="btn-green-glow" style="display:none;" disabled>¡Iniciar Lotería!</button>
-                <div id="relojInactividad" class="reloj-inactividad" style="display:none;">
-                    Se cierra en: <span id="tiempoInactividadUI">03:00</span>
+            <div class="sala-info-basica" style="display: flex; align-items: center; gap: 15px;">
+                <div>
+                    <h2 id="tituloSala" class="text-highlight m-0"></h2>
+                    <h3 id="codigoSalaTexto" class="text-muted m-0"></h3>
                 </div>
+                <!-- NUEVO: Botón para copiar -->
+                <button id="btnCopiarSala" class="btn-neutral-sm" title="Copiar al portapapeles" style="padding: 8px 12px; font-size: 18px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer;">📋</button>
+            </div>
+            
+            <div class="controles-superior">
+                
+                <!-- Bloque 1: Herramientas del Perfil de Usuario (FILA 1 ESTRICTA) -->
+                <div class="grupo-controles-perfil" style="display: flex; flex-direction: row; align-items: flex-end; justify-content: flex-end; gap: 15px; flex-wrap: nowrap; width: max-content;">
+                    
+                    <div class="control-group">
+                        <span class="input-label">Escribe un nombre de usuario</span>
+                        <input type="text" id="nombreTiempoReal" class="input-dark" placeholder="Este nombre es el que verán todos" style="margin-bottom: 0; width: 250px;">
+                    </div>
+                    
+                    <div class="control-group">
+                        <span class="input-label">Selecciona tu ficha</span>
+                        <select id="selectFicha" class="input-dark selector-ficha" style="margin-bottom: 0; width: 140px;">
+                            <option value="palomita">✔ Palomita</option>
+                            <option value="peso">🪙 Un Peso</option>
+                            <option value="frijol">🫘 Frijol</option>
+                            <option value="arroz">🍚 Arroz</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <span class="input-label">Selecciona una foto</span>
+                        <label class="btn-subir-foto" style="margin-bottom: 0; white-space: nowrap; height: 42px;">
+                            <span style="font-size: 16px;">📷</span> Subir
+                            <input type="file" id="inputFoto" accept="image/*" style="display:none;">
+                        </label>
+                    </div>
+
+                </div>
+
+                <!-- Bloque 2: Acciones Globales de Sala (FILA 2 ESTRICTA) -->
+                <div class="grupo-controles-acciones" style="display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 15px; flex-wrap: nowrap; width: max-content;">
+                    
+                    <button id="btnCambiarRol" class="btn-neutral" style="margin: 0; white-space: nowrap;">Cambiar a Espectador</button>
+                    
+                    <!-- Tooltip dinámico para Iniciar Partida -->
+                    <div id="wrapperBtnIniciar" class="tooltip-wrapper">
+                        <button id="btnIniciar" class="btn-green-glow" style="display:none; margin: 0; white-space: nowrap;" disabled>¡Iniciar Lotería!</button>
+                    </div>
+                    
+                    <!-- Tooltip nativo para Inactividad -->
+                    <div id="relojInactividad" class="reloj-inactividad tooltip-wrapper" style="display:none; margin: 0; white-space: nowrap;" data-tooltip="Esta sala se destruirá si no se comienza una partida.">
+                        Se cierra en: <span id="tiempoInactividadUI">03:00</span>
+                    </div>
+                    
+                </div>
+                
             </div>
         </div>
 
@@ -197,6 +243,21 @@
                     <hr class="divider">
                     <label class="checkbox-label"><input type="checkbox" id="checkAyudaNinos"> Ayuda para niños (iluminar)</label>
                     <label class="checkbox-label text-danger"><input type="checkbox" id="checkSinEspectadores"> <b>Sin Espectadores</b></label>
+                    <!-- NUEVO: Límite de jugadores -->
+                    <div style="margin-top: 15px; border-top: 1px solid var(--border-panel); padding-top: 15px;">
+                        <label class="checkbox-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0;">
+                            Límite de Jugadores:
+                            <select id="selectMaxJugadores" class="input-dark" style="width: auto; min-width: 60px; padding: 4px 8px; margin: 0; cursor: pointer;">
+                                <option value="8" selected>8</option>
+                                <option value="7">7</option>
+                                <option value="6">6</option>
+                                <option value="5">5</option>
+                                <option value="4">4</option>
+                                <option value="3">3</option>
+                                <option value="2">2</option>
+                            </select>
+                        </label>
+                    </div>
                 </div>
                 
                 <div class="caja-chat glass-panel" id="cajaChat">

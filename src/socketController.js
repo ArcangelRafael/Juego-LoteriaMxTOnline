@@ -11,14 +11,31 @@ module.exports = function (io, socket) {
         if (!sala) return;
         
         const listas = { jugadores: [], espectadores: [] };
+        let faltantesNombres = []; 
+        let numAnon = 1;
+
         for (const id in sala.jugadores) {
             const j = sala.jugadores[id];
             const info = { id, nombre: j.nombre || "Escribiendo...", enLobby: j.enLobby, foto: j.foto, isBot: j.isBot };
-            if (j.rol === 'jugador') listas.jugadores.push({ ...info, listo: j.tablillaBloqueada !== null });
-            else listas.espectadores.push(info);
+            
+            if (j.rol === 'jugador') {
+                const estaListo = j.tablillaBloqueada !== null;
+                listas.jugadores.push({ ...info, listo: estaListo });
+                
+                if (!estaListo && j.enLobby && !j.isBot) {
+                    faltantesNombres.push(j.nombre || `Anónimo ${numAnon++}`);
+                }
+            } else {
+                listas.espectadores.push(info);
+            }
         }
+        
         io.to(nombreSala).emit('actualizar_listas', listas);
-        io.to(sala.anfitrion).emit('estado_boton_iniciar', sala.todosEstanListos());
+        
+        io.to(sala.anfitrion).emit('estado_boton_iniciar', { 
+            listos: sala.todosEstanListos(), 
+            faltantes: faltantesNombres 
+        });
         emitirSalasPublicas();
     };
 
@@ -28,7 +45,8 @@ module.exports = function (io, socket) {
             .map(s => ({
                 nombreSala: s.nombre, codigo: s.codigo, 
                 anfitrion: s.jugadores[s.anfitrion]?.nombre || 'Esperando...', 
-                jugadores: s.getJugadoresActivos().length
+                jugadores: s.getJugadoresActivos().length,
+                maxJugadores: s.config.maxJugadores || 8 // ENVIAMOS EL LÍMITE REAL A LA VISTA PÚBLICA
             }));
         io.emit('salas_publicas_actualizadas', publicas);
     };
@@ -99,7 +117,17 @@ module.exports = function (io, socket) {
         sala.estado = 'finalizado';
         if(sala.intervalo) clearInterval(sala.intervalo); sala.intervalo = null;
         Object.values(sala.jugadores).forEach(j => { if(!j.isBot) j.enLobby = false; });
-        io.to(nombreSala).emit('juego_terminado', { ranking: sala.calcularRanking(), estadisticas: sala.estadisticas });
+        
+        // NUEVO: Inyectar el historial de vueltas en el ranking antes de enviarlo
+        const rankingFinal = sala.calcularRanking();
+        rankingFinal.forEach(r => {
+            const jugadorOriginal = Object.values(sala.jugadores).find(j => j.nombre === r.nombre);
+            if (jugadorOriginal && jugadorOriginal.historialPerdidas) {
+                r.historialPerdidas = jugadorOriginal.historialPerdidas;
+            }
+        });
+
+        io.to(nombreSala).emit('juego_terminado', { ranking: rankingFinal, estadisticas: sala.estadisticas });
         emitirListas(nombreSala); 
     };
 
@@ -118,6 +146,22 @@ module.exports = function (io, socket) {
         const sala = partidasActivas[nombreSala]; clearInterval(sala.votacion.temporizador);
         const numHumanos = sala.getHumanos().filter(j => j.rol === 'jugador').length;
         if (sala.votacion.votosSi > (numHumanos - sala.votacion.votosSi)) {
+            
+            // NUEVO: Guardar historial de cartas perdidas de esta vuelta antes de limpiar el mazo
+            Object.keys(sala.jugadores).forEach(id => {
+                const j = sala.jugadores[id];
+                if (j.rol === 'jugador') {
+                    const t = sala.tablillas.find(tab => tab.id === j.tablillaBloqueada);
+                    if (t) {
+                        const perdidasRonda = sala.cartasJugadas.filter(c => t.cartas.includes(c) && !j.marcas.includes(c));
+                        if (perdidasRonda.length > 0) {
+                            j.historialPerdidas = j.historialPerdidas || [];
+                            j.historialPerdidas.push(perdidasRonda);
+                        }
+                    }
+                }
+            });
+
             sala.estado = 'jugando'; sala.mazo = sala.mezclar(BARAJA_BASE); sala.cartasJugadas = [];
             io.to(nombreSala).emit('votacion_revolver_cerrada', true); io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: '¡El mazo se ha revuelto!' });
             sala.intervalo = setInterval(() => sacarCarta(nombreSala), sala.config.velocidadGriton);
@@ -238,7 +282,7 @@ module.exports = function (io, socket) {
         io.to(nombreSala).emit('juego_iniciado', infoJugadores);
         io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: '¡La partida va a comenzar!' });
 
-        let tiempoPrep = 5;
+        let tiempoPrep = 10;
         io.to(nombreSala).emit('actualizar_texto_carta', `¡CORRE Y SE VA CON... ${tiempoPrep}`);
         sala.intervalo = setInterval(() => {
             tiempoPrep--;
@@ -251,8 +295,18 @@ module.exports = function (io, socket) {
     };
 
     // --- EVENTOS DE SOCKET.IO ---
-    socket.emit('salas_publicas_actualizadas', Object.values(partidasActivas).filter(s => s.esPublica && s.estado === 'espera').map(s => ({nombreSala: s.nombre, codigo: s.codigo, anfitrion: s.jugadores[s.anfitrion]?.nombre || 'Esperando...', jugadores: s.getJugadoresActivos().length})));
-
+    // --- EVENTOS DE SOCKET.IO ---
+    socket.emit('salas_publicas_actualizadas', Object.values(partidasActivas)
+        .filter(s => s.esPublica && s.estado === 'espera')
+        .map(s => ({
+            nombreSala: s.nombre, 
+            codigo: s.codigo, 
+            anfitrion: s.jugadores[s.anfitrion]?.nombre || 'Esperando...', 
+            jugadores: s.getJugadoresActivos().length,
+            maxJugadores: s.config.maxJugadores || 8 // ¡AQUÍ ESTABA EL PUNTO CIEGO!
+        }))
+    );
+    
     socket.on('crear_sala', ({ nombreSala, esPublica }) => {
         if (partidasActivas[nombreSala]) return socket.emit('error_sala', 'El nombre ya existe.');
 
@@ -274,12 +328,24 @@ module.exports = function (io, socket) {
         const numJugadores = sala.getJugadoresActivos().length;
         const numEspectadores = Object.values(sala.jugadores).filter(j => j.rol === 'espectador').length;
         let rolFinal = datos.rolElegido;
+        
+        // Límite dinámico (8 por defecto si no lo han configurado)
+        const limiteJugadores = sala.config.maxJugadores || 8;
 
         if (sala.config.sinEspectadores && rolFinal === 'espectador') return socket.emit('error_sala', 'SIN ESPECTADORES.');
         if (rolFinal === 'espectador' && numEspectadores >= MAX_ESPECTADORES) return socket.emit('error_sala', 'Límite de espectadores.');
-        if (rolFinal === 'jugador' && numJugadores >= MAX_JUGADORES) {
-            if (sala.config.sinEspectadores || numEspectadores >= MAX_ESPECTADORES) return socket.emit('error_sala', 'Sala llena.');
-            socket.emit('error_sala', 'Entras como espectador.'); rolFinal = 'espectador';
+        
+        // Comprobación de Límite de Jugadores Activos
+        if (rolFinal === 'jugador' && numJugadores >= limiteJugadores) {
+            if (sala.config.sinEspectadores || numEspectadores >= MAX_ESPECTADORES) {
+                return socket.emit('error_sala', `¡ESTA SALA ESTÁ LLENA! El anfitrión ha limitado la partida a ${limiteJugadores} jugadores.`);
+            }
+            // NUEVO: En lugar de forzarlo, le enviamos un evento para preguntarle
+            return socket.emit('confirmar_espectador', { 
+                nombreSala: datos.nombreSala, 
+                codigoSala: datos.codigoSala,
+                mensaje: `Esta sala está llena (${limiteJugadores}/${limiteJugadores}).\n¿Deseas entrar como Espectador?`
+            });
         }
 
         socket.join(datos.nombreSala);
@@ -311,7 +377,9 @@ module.exports = function (io, socket) {
             const s = partidasActivas[nombre];
             if (s.esPublica && s.estado === 'espera') {
                 const numJ = s.getJugadoresActivos().length;
-                if (numJ < MAX_JUGADORES && numJ > maxPlayers) { maxPlayers = numJ; bestRoom = nombre; }
+                const limiteDinamico = s.config.maxJugadores || 8;
+                // Busca salas que aún no lleguen a su límite personalizado
+                if (numJ < limiteDinamico && numJ > maxPlayers) { maxPlayers = numJ; bestRoom = nombre; }
             }
         }
         if (bestRoom) socket.emit('partida_rapida_encontrada', { nombreSala: bestRoom, codigoSala: partidasActivas[bestRoom].codigo });
@@ -328,6 +396,13 @@ module.exports = function (io, socket) {
     socket.on('agregar_bot', (datos) => {
         const sala = partidasActivas[datos.nombreSala];
         if (sala && sala.estado === 'espera' && sala.anfitrion === socket.id) {
+            const numJugadores = sala.getJugadoresActivos().length;
+            const limiteJugadores = sala.config.maxJugadores || 8;
+
+            if (numJugadores >= limiteJugadores) {
+                return socket.emit('error_sala', `No puedes agregar más máquinas. El límite de la sala es de ${limiteJugadores} jugadores.`);
+            }
+
             const resultado = sala.agregarBot(datos.nombreBot);
             if(resultado) {
                 io.to(datos.nombreSala).emit('mensaje_chat', { nombre: resultado.bot.nombre, foto: resultado.bot.foto, mensaje: resultado.insultoStr });
@@ -339,14 +414,26 @@ module.exports = function (io, socket) {
 
     socket.on('escribiendo_nombre', (d) => { const s = partidasActivas[d.nombreSala]; if (s && s.jugadores[socket.id]) { s.jugadores[socket.id].nombre = d.nuevoNombre; emitirListas(d.nombreSala); }});
     socket.on('subir_foto', (d) => { const s = partidasActivas[d.nombreSala]; if (s && s.jugadores[socket.id]) { s.jugadores[socket.id].foto = d.fotoBase64; emitirListas(d.nombreSala); }});
-    socket.on('cambiar_config', (d) => { const s = partidasActivas[d.nombreSala]; if (s && s.anfitrion === socket.id && s.estado === 'espera') { s.config = d.config; io.to(d.nombreSala).emit('config_actualizada', s.config); }});
+    socket.on('cambiar_config', (d) => { 
+        const s = partidasActivas[d.nombreSala]; 
+        if (s && s.anfitrion === socket.id && s.estado === 'espera') { 
+            s.config = d.config; 
+            io.to(d.nombreSala).emit('config_actualizada', s.config); 
+            // NUEVO: Forzamos la actualización de la UI en tiempo real
+            emitirListas(d.nombreSala); 
+        }
+    });
     
     socket.on('cambiar_rol', (datos) => {
         const sala = partidasActivas[datos.nombreSala];
         if (!sala || sala.estado !== 'espera') return;
         const jugador = sala.jugadores[socket.id];
         
-        if (datos.nuevoRol === 'jugador' && Object.values(sala.jugadores).filter(j => j.rol === 'jugador').length >= MAX_JUGADORES) return socket.emit('error_sala', 'Sala llena (8/8).');
+        const limiteJugadores = sala.config.maxJugadores || 8;
+        
+        if (datos.nuevoRol === 'jugador' && Object.values(sala.jugadores).filter(j => j.rol === 'jugador').length >= limiteJugadores) {
+            return socket.emit('error_sala', `Sala llena (${limiteJugadores}/${limiteJugadores}).`);
+        }
         if (datos.nuevoRol === 'espectador') {
             if (sala.config.sinEspectadores) return socket.emit('error_sala', 'EN ESTA SALA NO SE ADMITEN ESPECTADORES.');
             if (Object.values(sala.jugadores).filter(j => j.rol === 'espectador').length >= MAX_ESPECTADORES) return socket.emit('error_sala', 'Límite de espectadores lleno (4/4).');
@@ -386,11 +473,9 @@ module.exports = function (io, socket) {
         }
     });
 
-    // NUEVO: INTERCEPTOR DEL CREADOR DE TABLILLAS
     socket.on('guardar_tablilla_custom', (d) => {
         const s = partidasActivas[d.nombreSala];
         if (s && s.estado === 'espera') {
-            // Validamos que sean 16 cartas exactas y que no haya repetidas
             if (d.cartas.length === 16 && new Set(d.cartas).size === 16) {
                 s.asignarTablillaPersonalizada(socket.id, d.cartas);
                 io.to(d.nombreSala).emit('actualizar_tablillas', s.tablillas);

@@ -25,6 +25,31 @@ document.getElementById('btnCrearSala').addEventListener('click', () => {
     if(n) { state.miSalaActual = n; socket.emit('crear_sala', { nombreSala: n, esPublica: esPub }); }
 });
 
+// NUEVO: Copiar datos de la sala al portapapeles (Corregido)
+document.getElementById('btnCopiarSala')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    // Lo obtenemos directamente por su ID para evitar el error de "null"
+    const btn = document.getElementById('btnCopiarSala'); 
+    const titulo = document.getElementById('tituloSala').innerText;
+    const codigo = document.getElementById('codigoSalaTexto').innerText;
+    
+    if (!titulo || !codigo) return; 
+
+    try {
+        const textoACopiar = `${titulo}\n${codigo}`;
+        await navigator.clipboard.writeText(textoACopiar);
+        
+        const iconoOriginal = btn.innerHTML;
+        btn.innerHTML = '✅';
+        
+        setTimeout(() => { 
+            btn.innerHTML = iconoOriginal; 
+        }, 2000); 
+    } catch (err) {
+        console.error('No se pudo copiar al portapapeles:', err);
+    }
+});
+
 document.getElementById('btnUnirseSala').addEventListener('click', () => {
     const n = document.getElementById('unirNombreSala').value; 
     const c = document.getElementById('unirCodigoSala').value.toUpperCase(); 
@@ -80,7 +105,7 @@ document.getElementById('btnMinimizarPanel').addEventListener('pointerdown', (e)
 });
 
 // ==========================================
-// RECUPERADO: Hacer el panel "Mostrar juego de:" arrastrable
+// RECUPERADO: Hacer el panel "Mostrar juego de:" arrastrable y LIMITADO
 // ==========================================
 const panelEspectador = document.getElementById('panelEspectadorUI');
 let isDraggingPanel = false;
@@ -100,12 +125,15 @@ panelEspectador.addEventListener('pointerdown', (e) => {
 
     const rect = panelEspectador.getBoundingClientRect();
     
+    // ¡EL TRUCO PARA QUE NO SALTE! Lo anclamos a la cámara (fixed)
+    panelEspectador.style.position = 'fixed';
     panelEspectador.style.left = rect.left + 'px';
     panelEspectador.style.top = rect.top + 'px';
     panelEspectador.style.right = 'auto';
     panelEspectador.style.bottom = 'auto';
     panelEspectador.style.transform = 'none';
     panelEspectador.style.margin = '0';
+    panelEspectador.style.zIndex = '9999'; // Asegurar que flote sobre todo lo demás
     
     panelEspectador.style.cursor = 'grabbing';
     document.body.style.userSelect = 'none'; 
@@ -119,9 +147,20 @@ document.addEventListener('pointermove', (e) => {
     const deltaY = e.clientY - dragStartPanelY;
 
     const rect = panelEspectador.getBoundingClientRect();
+    
+    let newLeft = rect.left + deltaX;
+    let newTop = rect.top + deltaY;
 
-    panelEspectador.style.left = (rect.left + deltaX) + 'px';
-    panelEspectador.style.top = (rect.top + deltaY) + 'px';
+    // MATEMÁTICAS DE BORDES: Evitamos que se salga de la pantalla
+    const maxX = window.innerWidth - rect.width;
+    const maxY = window.innerHeight - rect.height;
+
+    // Math.max evita que sea menor a 0, Math.min evita que sobrepase el límite máximo
+    newLeft = Math.max(0, Math.min(newLeft, maxX));
+    newTop = Math.max(0, Math.min(newTop, maxY));
+
+    panelEspectador.style.left = newLeft + 'px';
+    panelEspectador.style.top = newTop + 'px';
 
     dragStartPanelX = e.clientX;
     dragStartPanelY = e.clientY;
@@ -284,6 +323,7 @@ document.getElementById('btnEnviarChat').addEventListener('click', enviarMsjChat
 document.getElementById('chatInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') enviarMsjChat(); });
 
 // Config y Juego
+// Config y Juego
 const enviarConfiguracion = () => {
     if(!state.soyAnfitrion) return;
     const val = document.querySelector('input[name="velGriton"]:checked').value;
@@ -291,9 +331,18 @@ const enviarConfiguracion = () => {
     if(val === '5') { vG = 5000; tM = 6000; } else if(val === '2') { vG = 2000; tM = 4000; }
     const aN = document.getElementById('checkAyudaNinos').checked; 
     const sE = document.getElementById('checkSinEspectadores').checked;
-    state.configSala = { velocidadGriton: vG, tiempoMarcar: tM, ayudaNinos: aN, sinEspectadores: sE };
+    
+    // NUEVO: Capturar el límite de jugadores
+    const maxJ = parseInt(document.getElementById('selectMaxJugadores').value);
+    
+    state.configSala = { velocidadGriton: vG, tiempoMarcar: tM, ayudaNinos: aN, sinEspectadores: sE, maxJugadores: maxJ };
     socket.emit('cambiar_config', { nombreSala: state.miSalaActual, config: state.configSala });
 };
+
+document.querySelectorAll('input[name="velGriton"]').forEach(r => r.addEventListener('change', enviarConfiguracion));
+document.getElementById('checkAyudaNinos').addEventListener('change', enviarConfiguracion);
+document.getElementById('checkSinEspectadores').addEventListener('change', enviarConfiguracion);
+document.getElementById('selectMaxJugadores').addEventListener('change', enviarConfiguracion); // NUEVO LISTENER
 document.querySelectorAll('input[name="velGriton"]').forEach(r => r.addEventListener('change', enviarConfiguracion));
 document.getElementById('checkAyudaNinos').addEventListener('change', enviarConfiguracion);
 document.getElementById('checkSinEspectadores').addEventListener('change', enviarConfiguracion);
@@ -653,6 +702,26 @@ socket.on('salida_exitosa', () => { window.location.reload(); });
 socket.on('expulsado_de_sala', () => ui.mostrarModalError("Has sido expulsado de la sala.", true));
 socket.on('error_sala', (msg) => { ui.mostrarModalError(msg); document.getElementById('btnBloquear').style.display = 'none'; document.getElementById('btnDesbloquear').style.display = 'none'; });
 
+// NUEVO: El servidor nos pregunta si queremos entrar de espectadores
+socket.on('confirmar_espectador', (datos) => {
+    document.getElementById('textoConfirmarEspectador').textContent = datos.mensaje;
+    const modal = document.getElementById('modalConfirmarEspectador');
+    modal.style.display = 'flex';
+    
+    // Si dice que SÍ
+    document.getElementById('btnAceptarEspectador').onclick = () => {
+        modal.style.display = 'none';
+        // Reintentamos unirnos pero forzando el rol de espectador
+        socket.emit('unirse_sala', { nombreSala: datos.nombreSala, codigoSala: datos.codigoSala, rolElegido: 'espectador' });
+    };
+    
+    // Si dice que NO (Cancelar)
+    document.getElementById('btnRechazarEspectador').onclick = () => {
+        modal.style.display = 'none';
+        // Se queda en el menú principal sin hacer nada más
+    };
+});
+
 socket.on('sala_creada', (d) => { 
     state.soyAnfitrion = true; state.miRol = 'jugador'; ui.actualizarUIConfig(d.config, state); ui.initLobby(d.nombreSala, d.codigoSala, d.tablillas, renderizarTablillasCallback); 
     document.getElementById('etiquetaHost').style.display='inline'; document.getElementById('btnIniciar').style.display = 'inline-block'; 
@@ -696,9 +765,26 @@ socket.on('rol_cambiado', (r) => {
 });
 
 socket.on('actualizar_listas', (listas) => ui.actualizarListas(listas, state));
-socket.on('estado_boton_iniciar', (listos) => { 
+socket.on('estado_boton_iniciar', (data) => { 
     if (state.soyAnfitrion && !state.juegoEnCurso) { 
-        const b = document.getElementById('btnIniciar'); b.style.display = 'inline-block'; b.disabled = !listos; b.style.backgroundColor = listos ? 'lightgreen' : 'lightgray'; 
+        const b = document.getElementById('btnIniciar'); 
+        const wrapper = document.getElementById('wrapperBtnIniciar');
+        b.style.display = 'inline-block'; 
+        
+        // Manejador de compatibilidad (por si llega booleano o el nuevo objeto)
+        const listos = typeof data === 'object' ? data.listos : data;
+        const faltantes = typeof data === 'object' ? data.faltantes : [];
+        
+        b.disabled = !listos; 
+        b.style.backgroundColor = listos ? 'lightgreen' : 'lightgray'; 
+        
+        // INYECCIÓN DEL TOOLTIP
+        if (!listos && faltantes.length > 0) {
+            const msj = 'Faltan de elegir tablilla:\n' + faltantes.join(', ');
+            wrapper.setAttribute('data-tooltip', msj);
+        } else {
+            wrapper.removeAttribute('data-tooltip'); // Se borra si ya están todos
+        }
     } 
 });
 socket.on('nuevo_anfitrion', () => {
@@ -906,8 +992,20 @@ socket.on('regreso_al_lobby_exitoso', () => {
         contenedorTabs.style.setProperty('--offset-x', '0px');
         contenedorTabs.style.setProperty('--offset-y', '0px');
     }
+    
+    // NUEVO: Limpiamos la memoria de posición del panel de espectadores
+    const panelEsp = document.getElementById('panelEspectadorUI');
+    if(panelEsp) {
+        panelEsp.style.position = '';
+        panelEsp.style.left = '';
+        panelEsp.style.top = '';
+        panelEsp.style.right = '';
+        panelEsp.style.bottom = '';
+        panelEsp.style.transform = '';
+        panelEsp.style.margin = '';
+    }
 
-    state.juegoEnCurso = false; state.misCartasMarcadas = 0; 
+    state.juegoEnCurso = false; state.misCartasMarcadas = 0;
     document.getElementById('cartaActual').innerHTML = TEXTO_LOBBY; document.getElementById('cartaActual').style.color = "";
     document.getElementById('pantallaResultados').classList.remove('activa'); document.getElementById('pantallaLobby').classList.add('activa');
     document.getElementById('pantallaLobby').classList.remove('mesa-activa');

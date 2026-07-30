@@ -34,6 +34,12 @@ export function actualizarUIConfig(cfg, state) {
 
     if(cfg.sinEspectadores) document.getElementById('btnCambiarRol').style.display = 'none';
     else if(!state.juegoEnCurso) document.getElementById('btnCambiarRol').style.display = 'inline-block';
+
+    // Actualizar select de máximo de jugadores
+    const selectMax = document.getElementById('selectMaxJugadores');
+    if (selectMax && cfg.maxJugadores) {
+        selectMax.value = cfg.maxJugadores;
+    }
 }
 
 export function initLobby(n, c, t, renderizarTablillasCb) {
@@ -48,7 +54,11 @@ export function initLobby(n, c, t, renderizarTablillasCb) {
 export function actualizarListas(listas, state) {
     const ulJ = document.getElementById('listaJugadoresUI');
     const ulE = document.getElementById('listaEspectadoresUI');
-    document.getElementById('contadorJugadores').textContent = `${listas.jugadores.length}/8`;
+    
+    // Obtenemos el límite dinámico (o 8 por defecto si no lo han puesto)
+    const limiteJugadores = (state.configSala && state.configSala.maxJugadores) ? state.configSala.maxJugadores : 8;
+    
+    document.getElementById('contadorJugadores').textContent = `${listas.jugadores.length}/${limiteJugadores}`;
     document.getElementById('contadorEspectadores').textContent = `${listas.espectadores.length}/4`;
 
     ulJ.innerHTML = '';
@@ -145,33 +155,55 @@ export function mostrarResultados(datos) {
     
     ranking.forEach((jugador, i) => {
         let detallesCartas = '<p style="margin:5px 0; color:#94a3b8;">Se le fueron tarjetas: <b>NO</b></p>';
+        let htmlRondas = '';
         
+        // 1. Verificar si hay historial de vueltas anteriores (Mazo revuelto)
+        if (jugador.historialPerdidas && jugador.historialPerdidas.length > 0) {
+            jugador.historialPerdidas.forEach((perdidasRonda, index) => {
+                let lista = perdidasRonda.map(carta => {
+                    let num = carta.split(' ')[1]; 
+                    let nombreReal = CARTAS_LOTERIA[num] ? CARTAS_LOTERIA[num].nombre : carta;
+                    return `<li>${nombreReal}</li>`;
+                }).join('');
+                htmlRondas += `<p style="margin: 8px 0 2px 0; color: #fbbf24; font-size: 0.9em; font-weight: bold;">Vuelta ${index + 1}:</p><ul style="margin-top:0;">${lista}</ul>`;
+            });
+        }
+
+        // 2. Verificar la vuelta final (o la única vuelta si nadie revolvió)
         if (jugador.perdidas && jugador.perdidas.length > 0) {
-            let listaBullets = jugador.perdidas.map(carta => {
+            let lista = jugador.perdidas.map(carta => {
                 let num = carta.split(' ')[1]; 
                 let nombreReal = CARTAS_LOTERIA[num] ? CARTAS_LOTERIA[num].nombre : carta;
                 return `<li>${nombreReal}</li>`;
             }).join(''); 
+            
+            let tituloRonda = (jugador.historialPerdidas && jugador.historialPerdidas.length > 0) ? `<p style="margin: 8px 0 2px 0; color: #fbbf24; font-size: 0.9em; font-weight: bold;">Vuelta Final:</p>` : '';
+            htmlRondas += `${tituloRonda}<ul style="margin-top:0;">${lista}</ul>`;
+        }
 
+        // Si se generó contenido, armamos el bloque completo
+        if (htmlRondas !== '') {
             detallesCartas = `
                 <div class="analisis-scroll">
-                    <p style="margin: 0 0 8px 0; color: #f87171; font-weight: 600;">Se le fueron tarjetas: Sí</p>
-                    <ul>${listaBullets}</ul>
+                    <p style="margin: 0 0 4px 0; color: #f87171; font-weight: 600;">Se le fueron tarjetas: Sí</p>
+                    ${htmlRondas}
                 </div>
             `;
         }
 
         let imgH = jugador.foto ? `<img src="${jugador.foto}" class="foto-ranking">` : '';
         
+        // Renderizado del HTML con protección anti-saltos de línea (nowrap)
         ul.innerHTML += `
-            <li>
-                <div style="display:flex; align-items:center; width:100%;">
-                    <b style="width:100px;">Lugar #${i + 1}:</b> 
-                    ${imgH} <span style="flex:1;">${jugador.nombre}</span> 
-                    <i>(${jugador.marcas} marcas)</i>
+            <li style="display: flex; flex-direction: column; align-items: flex-start; padding: 15px 0; border-bottom: 1px solid var(--border-panel);">
+                <div style="display:flex; align-items:center; width:100%; gap: 15px;">
+                    <b style="width:85px; flex-shrink:0;">Lugar #${i + 1}:</b> 
+                    ${imgH} 
+                    <span style="flex:1; font-weight: 700; font-size: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${jugador.nombre}">${jugador.nombre}</span> 
+                    <i style="flex-shrink:0; color:#94a3b8; white-space: nowrap;">(${jugador.marcas} marcas)</i>
                 </div>
-                <details style="width:100%; box-sizing:border-box;">
-                    <summary>Análisis</summary>
+                <details style="width:100%; box-sizing:border-box; margin-top: 10px;">
+                    <summary style="outline: none; cursor: pointer; color: #38bdf8; font-weight: 600; padding: 5px 0;">▶ Análisis</summary>
                     ${detallesCartas}
                 </details>
             </li>`;
@@ -205,11 +237,14 @@ export function pintarSalasPublicas(salas) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">No hay salas públicas en espera. ¡Crea una!</td></tr>';
     } else {
         salas.forEach(s => {
-            let btnDisabled = s.jugadores >= 8 ? 'disabled' : '';
-            let btnText = s.jugadores >= 8 ? 'Llena' : 'Unirse';
+            // REGLA DE SEGURIDAD: Si no viene el dato, usamos 8 por defecto
+            const limiteMaximo = s.maxJugadores || 8; 
+            
+            let btnText = s.jugadores >= limiteMaximo ? 'Llena (Ver)' : 'Unirse';
+            
             tbody.innerHTML += `<tr>
-                <td><b>${s.nombreSala}</b></td><td>${s.anfitrion}</td><td>${s.jugadores}/8</td>
-                <td><button class="btn-unirse-tabla" ${btnDisabled} data-sala="${s.nombreSala}" data-codigo="${s.codigo}">${btnText}</button></td>
+                <td><b>${s.nombreSala}</b></td><td>${s.anfitrion}</td><td>${s.jugadores}/${limiteMaximo}</td>
+                <td><button class="btn-unirse-tabla" data-sala="${s.nombreSala}" data-codigo="${s.codigo}">${btnText}</button></td>
             </tr>`;
         });
     }
