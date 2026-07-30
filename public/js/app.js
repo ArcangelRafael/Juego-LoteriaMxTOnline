@@ -60,6 +60,11 @@ document.getElementById('inputFoto').addEventListener('change', (e) => {
 });
 
 document.getElementById('nombreTiempoReal').addEventListener('input', (e) => socket.emit('escribiendo_nombre', { nombreSala: state.miSalaActual, nuevoNombre: e.target.value }));
+// NUEVO: Guardar la preferencia de la ficha seleccionada
+state.miFicha = 'palomita'; // Valor por defecto
+document.getElementById('selectFicha').addEventListener('change', (e) => {
+    state.miFicha = e.target.value;
+});
 document.getElementById('btnCambiarRol').addEventListener('click', () => socket.emit('cambiar_rol', { nombreSala: state.miSalaActual, nuevoRol: state.miRol === 'jugador' ? 'espectador' : 'jugador' }));
 document.getElementById('btnBloquear').addEventListener('pointerdown', (e) => { e.stopPropagation(); socket.emit('bloquear_tablilla', state.miSalaActual); });
 document.getElementById('btnDesbloquear').addEventListener('pointerdown', (e) => { e.stopPropagation(); socket.emit('desbloquear_tablilla', state.miSalaActual); });
@@ -619,7 +624,16 @@ socket.on('nueva_carta', (carta) => {
     if (state.miRol === 'espectador') {
         document.querySelectorAll('#contenedorEspectador .carta').forEach(div => {
             if (div.dataset.numero === numCarta && !div.classList.contains('marcada')) {
-                div.classList.add('marcable-visual'); 
+                // Añade la marca sin borrar tu imagen
+                        div.classList.add('marcada'); 
+                        
+                        // Evaluar qué ficha inyectar
+                        let marcador = '<div class="palomita">✔</div>';
+                        if (state.miFicha === 'peso') marcador = '<div class="palomita"><img src="/assets/img/unpeso.webp" class="ficha-img"></div>';
+                        else if (state.miFicha === 'frijol') marcador = '<div class="palomita"><img src="/assets/img/gfrijol.webp" class="ficha-img"></div>';
+                        else if (state.miFicha === 'arroz') marcador = '<div class="palomita"><img src="/assets/img/garroz.webp" class="ficha-img"></div>';
+                        
+                        div.innerHTML += marcador;
                 setTimeout(() => div.classList.remove('marcable-visual'), state.configSala.tiempoMarcar);
             }
         });
