@@ -13,14 +13,8 @@ export function mostrarModalError(msg, callbackRecarga = null) {
 export function mostrarModalExpulsion(nombre, onConfirm) {
     document.getElementById('nombreExpulsarUI').textContent = nombre;
     document.getElementById('modalExpulsar').style.display = 'flex';
-    
-    document.getElementById('btnConfirmarExpulsion').onclick = () => {
-        document.getElementById('modalExpulsar').style.display = 'none';
-        onConfirm();
-    };
-    document.getElementById('btnCancelarExpulsion').onclick = () => {
-        document.getElementById('modalExpulsar').style.display = 'none';
-    };
+    document.getElementById('btnConfirmarExpulsion').onclick = () => { document.getElementById('modalExpulsar').style.display = 'none'; onConfirm(); };
+    document.getElementById('btnCancelarExpulsion').onclick = () => { document.getElementById('modalExpulsar').style.display = 'none'; };
 }
 
 export function actualizarUIConfig(cfg, state) {
@@ -35,11 +29,8 @@ export function actualizarUIConfig(cfg, state) {
     if(cfg.sinEspectadores) document.getElementById('btnCambiarRol').style.display = 'none';
     else if(!state.juegoEnCurso) document.getElementById('btnCambiarRol').style.display = 'inline-block';
 
-    // Actualizar select de máximo de jugadores
     const selectMax = document.getElementById('selectMaxJugadores');
-    if (selectMax && cfg.maxJugadores) {
-        selectMax.value = cfg.maxJugadores;
-    }
+    if (selectMax && cfg.maxJugadores) selectMax.value = cfg.maxJugadores;
 }
 
 export function initLobby(n, c, t, renderizarTablillasCb) {
@@ -54,8 +45,6 @@ export function initLobby(n, c, t, renderizarTablillasCb) {
 export function actualizarListas(listas, state) {
     const ulJ = document.getElementById('listaJugadoresUI');
     const ulE = document.getElementById('listaEspectadoresUI');
-    
-    // Obtenemos el límite dinámico (o 8 por defecto si no lo han puesto)
     const limiteJugadores = (state.configSala && state.configSala.maxJugadores) ? state.configSala.maxJugadores : 8;
     
     document.getElementById('contadorJugadores').textContent = `${listas.jugadores.length}/${limiteJugadores}`;
@@ -79,57 +68,57 @@ export function actualizarListas(listas, state) {
 export function prepararInterfazJuego(state, contruirEspectadorCb) {
     state.juegoEnCurso = true;
     document.getElementById('btnIniciar').style.display = 'none';
-    const reloj = document.getElementById('relojInactividad');
-    if(reloj) reloj.style.display = 'none';
-    const btnTablilla = document.getElementById('botonesTablilla');
-    if(btnTablilla) btnTablilla.style.display = 'none';
-    const btnRol = document.getElementById('btnCambiarRol');
-    if(btnRol) btnRol.style.display = 'none';
-    const inputNombre = document.getElementById('nombreTiempoReal');
-    if(inputNombre) inputNombre.disabled = true;
-    
-    // Ocultar Botón de Creador
-    const btnCreador = document.getElementById('contenedorBtnCreador');
-    if(btnCreador) btnCreador.style.display = 'none';
+    const reloj = document.getElementById('relojInactividad'); if(reloj) reloj.style.display = 'none';
+    const btnTablilla = document.getElementById('botonesTablilla'); if(btnTablilla) btnTablilla.style.display = 'none';
+    const btnRol = document.getElementById('btnCambiarRol'); if(btnRol) btnRol.style.display = 'none';
+    const inputNombre = document.getElementById('nombreTiempoReal'); if(inputNombre) inputNombre.disabled = true;
+    const btnCreador = document.getElementById('contenedorBtnCreador'); if(btnCreador) btnCreador.style.display = 'none';
     
     const header = document.querySelector('.header-sala');
     const cajasListas = document.getElementById('cajasListas');
     const panelConfig = document.getElementById('panelConfiguracion');
-    
     if(header) header.classList.add('oculto-juego');
     if(cajasListas) cajasListas.classList.add('oculto-juego');
     if(panelConfig) panelConfig.classList.add('oculto-juego');
 
     document.getElementById('pantallaLobby').classList.add('mesa-activa');
-    
-    const tituloEsp = document.getElementById('tituloEspectando');
-    if(tituloEsp) tituloEsp.style.display = 'none';
+    const tituloEsp = document.getElementById('tituloEspectando'); if(tituloEsp) tituloEsp.style.display = 'none';
 
     setTimeout(() => {
         const chat = document.getElementById('cajaChat');
         const columnaHerramientas = document.getElementById('herramientasSala');
-        
         if(chat) chat.style.display = 'none';
         if(columnaHerramientas) columnaHerramientas.style.display = 'none';
     }, 100);
     
     if(state.miRol === 'jugador') {
+        const miTablilla = document.querySelector('.bloqueada-mia');
+        
         const btnLoteria = document.getElementById('btnLoteria');
-        if(btnLoteria) {
+        if(btnLoteria && miTablilla) {
             btnLoteria.style.display = 'inline-block';
-            document.getElementById('panelEspectadorUI').appendChild(btnLoteria);
+            const contenedorLoteria = miTablilla.querySelector('.contenedor-titulo-loteria');
+            if (contenedorLoteria) contenedorLoteria.appendChild(btnLoteria);
         }
         
         const btnChatMovil = document.getElementById('btnAbrirChatMovil');
-        if(btnChatMovil) btnChatMovil.style.display = 'flex';
+        if(btnChatMovil && miTablilla) {
+            btnChatMovil.style.display = 'flex';
+            miTablilla.appendChild(btnChatMovil); // Lo metemos en la tablilla para que se mueva con ella
+        }
+
+        const panelEsp = document.getElementById('panelEspectadorUI');
+        if(panelEsp && miTablilla) {
+            miTablilla.appendChild(panelEsp); // Lo metemos para que se mueva con ella
+        }
     }
     
+    // Limpiamos los bordes verdes de todas las tablillas (bloqueada-mia)
     document.querySelectorAll('.tablilla').forEach(el => {
         if(!el.classList.contains('bloqueada-mia') && state.miRol === 'jugador') el.style.display = 'none';
-        else if (state.miRol === 'espectador') el.style.display = 'none'; 
-        else el.classList.remove('bloqueada-mia'); 
+        else if (state.miRol === 'espectador') el.style.display = 'none';
+        // Ya no removemos bloqueada-mia, la necesitamos para el diseño
     });
-    
     contruirEspectadorCb();
 }
 
@@ -138,7 +127,6 @@ export function mostrarResultados(datos) {
     document.getElementById('pantallaResultados').classList.add('activa');
     document.getElementById('modalVotacion').style.display = 'none';
     document.getElementById('modalSinCartas').style.display = 'none';
-    
     document.getElementById('btnAbrirChatMovil').style.display = 'none';
     document.getElementById('chatIngameContenedor').style.display = 'none';
 
@@ -157,7 +145,6 @@ export function mostrarResultados(datos) {
         let detallesCartas = '<p style="margin:5px 0; color:#94a3b8;">Se le fueron tarjetas: <b>NO</b></p>';
         let htmlRondas = '';
         
-        // 1. Verificar si hay historial de vueltas anteriores (Mazo revuelto)
         if (jugador.historialPerdidas && jugador.historialPerdidas.length > 0) {
             jugador.historialPerdidas.forEach((perdidasRonda, index) => {
                 let lista = perdidasRonda.map(carta => {
@@ -169,31 +156,21 @@ export function mostrarResultados(datos) {
             });
         }
 
-        // 2. Verificar la vuelta final (o la única vuelta si nadie revolvió)
         if (jugador.perdidas && jugador.perdidas.length > 0) {
             let lista = jugador.perdidas.map(carta => {
                 let num = carta.split(' ')[1]; 
                 let nombreReal = CARTAS_LOTERIA[num] ? CARTAS_LOTERIA[num].nombre : carta;
                 return `<li>${nombreReal}</li>`;
             }).join(''); 
-            
             let tituloRonda = (jugador.historialPerdidas && jugador.historialPerdidas.length > 0) ? `<p style="margin: 8px 0 2px 0; color: #fbbf24; font-size: 0.9em; font-weight: bold;">Vuelta Final:</p>` : '';
             htmlRondas += `${tituloRonda}<ul style="margin-top:0;">${lista}</ul>`;
         }
 
-        // Si se generó contenido, armamos el bloque completo
         if (htmlRondas !== '') {
-            detallesCartas = `
-                <div class="analisis-scroll">
-                    <p style="margin: 0 0 4px 0; color: #f87171; font-weight: 600;">Se le fueron tarjetas: Sí</p>
-                    ${htmlRondas}
-                </div>
-            `;
+            detallesCartas = `<div class="analisis-scroll"><p style="margin: 0 0 4px 0; color: #f87171; font-weight: 600;">Se le fueron tarjetas: Sí</p>${htmlRondas}</div>`;
         }
 
         let imgH = jugador.foto ? `<img src="${jugador.foto}" class="foto-ranking">` : '';
-        
-        // Renderizado del HTML con protección anti-saltos de línea (nowrap)
         ul.innerHTML += `
             <li style="display: flex; flex-direction: column; align-items: flex-start; padding: 15px 0; border-bottom: 1px solid var(--border-panel);">
                 <div style="display:flex; align-items:center; width:100%; gap: 15px;">
@@ -215,11 +192,7 @@ export function mostrarResultados(datos) {
     let msjRobo = stats.robo && stats.robo.victimas.length > 0 ? `<p style="color:gold;"><b>Robo de victoria:</b> ${stats.robo.ganador} se la robó por reflejos a ${stats.robo.victimas.join(', ')}</p>` : '';
     let msjDistraido = stats.distraido && stats.distraido.nombre ? `<p style="color:coral;"><b>Más distraído:</b> ${stats.distraido.nombre} (se le pasaron ${stats.distraido.cantidad} cartas)</p>` : '';
 
-    cajaS.innerHTML = `<h3>Análisis General de la Partida</h3>
-        <p>El click más rápido fue de: <b>${msjRapido}</b></p>
-        <p>El click más lento fue de: <b>${msjLento}</b></p>
-        ${msjRobo}
-        ${msjDistraido}`;
+    cajaS.innerHTML = `<h3>Análisis General de la Partida</h3><p>El click más rápido fue de: <b>${msjRapido}</b></p><p>El click más lento fue de: <b>${msjLento}</b></p>${msjRobo}${msjDistraido}`;
 }
 
 export function pintarMensajeChat(datos) {
@@ -231,78 +204,36 @@ export function pintarMensajeChat(datos) {
 }
 
 export function pintarSalasPublicas(salas) {
-    const tbody = document.getElementById('listaSalasPublicasUI');
-    tbody.innerHTML = '';
-    if(salas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">No hay salas públicas en espera. ¡Crea una!</td></tr>';
-    } else {
+    const tbody = document.getElementById('listaSalasPublicasUI'); tbody.innerHTML = '';
+    if(salas.length === 0) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">No hay salas públicas en espera. ¡Crea una!</td></tr>';
+    else {
         salas.forEach(s => {
-            // REGLA DE SEGURIDAD: Si no viene el dato, usamos 8 por defecto
             const limiteMaximo = s.maxJugadores || 8; 
-            
             let btnText = s.jugadores >= limiteMaximo ? 'Llena (Ver)' : 'Unirse';
-            
-            tbody.innerHTML += `<tr>
-                <td><b>${s.nombreSala}</b></td><td>${s.anfitrion}</td><td>${s.jugadores}/${limiteMaximo}</td>
-                <td><button class="btn-unirse-tabla" data-sala="${s.nombreSala}" data-codigo="${s.codigo}">${btnText}</button></td>
-            </tr>`;
+            tbody.innerHTML += `<tr><td><b>${s.nombreSala}</b></td><td>${s.anfitrion}</td><td>${s.jugadores}/${limiteMaximo}</td><td><button class="btn-unirse-tabla" data-sala="${s.nombreSala}" data-codigo="${s.codigo}">${btnText}</button></td></tr>`;
         });
     }
 }
 
-// ==========================================
-// NUEVO: FUNCIONES DEL CREADOR DE TABLILLAS
-// ==========================================
 export function inicializarCreador(state, CARTAS_DICCIONARIO) {
-    const gridCat = document.getElementById('creadorCatalogoGrid');
-    gridCat.innerHTML = '';
-    
-    // Iteramos por las 54 cartas para inyectarlas en el panel derecho
+    const gridCat = document.getElementById('creadorCatalogoGrid'); gridCat.innerHTML = '';
     for (let i = 1; i <= 54; i++) {
-        const strNum = i.toString();
-        const info = CARTAS_DICCIONARIO[strNum];
-        if (info) {
-            gridCat.innerHTML += `
-                <div class="carta-catalogo" data-numero="${strNum}" draggable="true">
-                    <img src="${info.img}" draggable="false" title="${info.nombre}">
-                    <!-- NUEVO: Nombre de la carta -->
-                    <div class="nombre-carta-catalogo" title="${info.nombre}">${info.nombre}</div>
-                </div>
-            `;
-        }
+        const strNum = i.toString(); const info = CARTAS_DICCIONARIO[strNum];
+        if (info) gridCat.innerHTML += `<div class="carta-catalogo" data-numero="${strNum}" draggable="true"><img src="${info.img}" draggable="false" title="${info.nombre}"><div class="nombre-carta-catalogo" title="${info.nombre}">${info.nombre}</div></div>`;
     }
     actualizarCreadorUI(state, CARTAS_DICCIONARIO);
 }
 
 export function actualizarCreadorUI(state, CARTAS_DICCIONARIO) {
-    // 1. DIBUJAR LA CUADRÍCULA (16 Espacios)
-    const gridTab = document.getElementById('creadorTablillaGrid');
-    gridTab.innerHTML = '';
-    let llenas = 0;
-
+    const gridTab = document.getElementById('creadorTablillaGrid'); gridTab.innerHTML = ''; let llenas = 0;
     for (let i = 0; i < 16; i++) {
-        const num = state.creadorCartas[i];
-        let content = '';
-        if (num !== null && CARTAS_DICCIONARIO[num]) {
-            content = `<img src="${CARTAS_DICCIONARIO[num].img}" draggable="false">`;
-            llenas++;
-        }
-        gridTab.innerHTML += `<div class="creador-slot" data-index="${i}">
-            ${content}
-        </div>`;
+        const num = state.creadorCartas[i]; let content = '';
+        if (num !== null && CARTAS_DICCIONARIO[num]) { content = `<img src="${CARTAS_DICCIONARIO[num].img}" draggable="false">`; llenas++; }
+        gridTab.innerHTML += `<div class="creador-slot" data-index="${i}">${content}</div>`;
     }
-
-    // 2. ACTUALIZAR CONTADOR Y BOTÓN GUARDAR
-    document.getElementById('creadorContador').textContent = `${llenas}/16`;
-    document.getElementById('btnGuardarCreador').disabled = (llenas !== 16);
-
-    // 3. PINTAR BORDES VERDES EN EL CATÁLOGO (Si la carta está seleccionada)
+    document.getElementById('creadorContador').textContent = `${llenas}/16`; document.getElementById('btnGuardarCreador').disabled = (llenas !== 16);
     document.querySelectorAll('.carta-catalogo').forEach(el => {
         const strNum = el.dataset.numero;
-        if (state.creadorCartas.includes(strNum)) {
-            el.classList.add('en-tablilla');
-        } else {
-            el.classList.remove('en-tablilla');
-        }
+        if (state.creadorCartas.includes(strNum)) el.classList.add('en-tablilla'); else el.classList.remove('en-tablilla');
     });
 }

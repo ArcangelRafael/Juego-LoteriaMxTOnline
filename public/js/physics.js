@@ -2,11 +2,9 @@
 
 export function setupPhysics() {
     
-    // Función auxiliar para guardar las posiciones en memoria
     function guardarLayout() {
         const contenedorTabs = document.getElementById('contenedorTablillas');
         const zonaGriton = document.querySelector('.zona-griton');
-        const panelEspectador = document.getElementById('panelEspectadorUI');
         
         const layoutState = {
             tabScaleX: contenedorTabs.style.getPropertyValue('--escala-x') || '',
@@ -14,16 +12,11 @@ export function setupPhysics() {
             tabOffsetX: contenedorTabs.style.getPropertyValue('--offset-x') || '',
             tabOffsetY: contenedorTabs.style.getPropertyValue('--offset-y') || '',
             gritonX: zonaGriton ? zonaGriton.style.getPropertyValue('--griton-x') : '',
-            gritonY: zonaGriton ? zonaGriton.style.getPropertyValue('--griton-y') : '',
-            panelLeft: panelEspectador.style.left || '',
-            panelTop: panelEspectador.style.top || '',
-            panelPos: panelEspectador.style.position || '',
-            panelZ: panelEspectador.style.zIndex || ''
+            gritonY: zonaGriton ? zonaGriton.style.getPropertyValue('--griton-y') : ''
         };
         sessionStorage.setItem('loteria_layout', JSON.stringify(layoutState));
     }
 
-    // Panel arrastrable y minimizar
     document.getElementById('btnMinimizarPanel').addEventListener('pointerdown', (e) => {
         e.preventDefault(); e.stopPropagation();
         const panel = document.getElementById('panelEspectadorUI');
@@ -33,75 +26,6 @@ export function setupPhysics() {
         else { panel.classList.add('minimizado'); contenido.style.display = 'none'; btn.textContent = '+'; }
     });
 
-    // ==========================================
-    // Hacer el panel "Mostrar juego de:" arrastrable
-    // ==========================================
-    const panelEspectador = document.getElementById('panelEspectadorUI');
-    let isDraggingPanel = false;
-    let dragStartPanelX, dragStartPanelY;
-
-    panelEspectador.style.cursor = 'grab';
-
-    panelEspectador.addEventListener('pointerdown', (e) => {
-        if (e.target.closest('button') || e.target.closest('#listaChecksJugadores') || e.target.classList.contains('resizer-handle') || e.target.classList.contains('arrastrable-header')) {
-            return; 
-        }
-        isDraggingPanel = true;
-        dragStartPanelX = e.clientX;
-        dragStartPanelY = e.clientY;
-
-        const rect = panelEspectador.getBoundingClientRect();
-        
-        panelEspectador.style.position = 'fixed';
-        panelEspectador.style.left = rect.left + 'px';
-        panelEspectador.style.top = rect.top + 'px';
-        panelEspectador.style.right = 'auto';
-        panelEspectador.style.bottom = 'auto';
-        panelEspectador.style.transform = 'none';
-        panelEspectador.style.margin = '0';
-        panelEspectador.style.zIndex = '9999'; 
-        
-        panelEspectador.style.cursor = 'grabbing';
-        document.body.style.userSelect = 'none'; 
-    });
-
-    document.addEventListener('pointermove', (e) => {
-        if (!isDraggingPanel) return;
-        e.preventDefault();
-
-        const deltaX = e.clientX - dragStartPanelX;
-        const deltaY = e.clientY - dragStartPanelY;
-
-        const rect = panelEspectador.getBoundingClientRect();
-        
-        let newLeft = rect.left + deltaX;
-        let newTop = rect.top + deltaY;
-
-        const maxX = window.innerWidth - rect.width;
-        const maxY = window.innerHeight - rect.height;
-
-        newLeft = Math.max(0, Math.min(newLeft, maxX));
-        newTop = Math.max(0, Math.min(newTop, maxY));
-
-        panelEspectador.style.left = newLeft + 'px';
-        panelEspectador.style.top = newTop + 'px';
-
-        dragStartPanelX = e.clientX;
-        dragStartPanelY = e.clientY;
-    });
-
-    document.addEventListener('pointerup', () => {
-        if (isDraggingPanel) {
-            isDraggingPanel = false;
-            panelEspectador.style.cursor = 'grab';
-            document.body.style.userSelect = 'auto';
-            guardarLayout(); // Guardamos al soltar
-        }
-    });
-
-    // ==========================================
-    // Lógica para redimensionar y MOVER la Tablilla + EL GRITÓN
-    // ==========================================
     let isResizingTablilla = false;
     let startYResizer = 0; let startXResizer = 0;
     let startScaleY = 1; let startScaleX = 1;
@@ -124,11 +48,12 @@ export function setupPhysics() {
             startXResizer = e.clientX;
             startYResizer = e.clientY;
             
-            startScaleX = parseFloat(contenedorTabs.style.getPropertyValue('--escala-x')) || (window.innerWidth <= 768 ? 1.18 : 1.35);
-            startScaleY = parseFloat(contenedorTabs.style.getPropertyValue('--escala-y')) || (window.innerWidth <= 768 ? 1.18 : 1.35);
-            document.body.style.cursor = 'move';
+            // CORRECCIÓN: Tamaño de escala por defecto arreglado a 1 (100%)
+            startScaleX = parseFloat(contenedorTabs.style.getPropertyValue('--escala-x')) || 1;
+            startScaleY = parseFloat(contenedorTabs.style.getPropertyValue('--escala-y')) || 1;
+            document.body.style.cursor = 'nwse-resize';
         }
-        else if (e.target.classList.contains('arrastrable-header')) {
+        else if (e.target.classList.contains('mover-handle')) {
             e.preventDefault();
             e.stopPropagation();
             isDraggingMiTablilla = true;
@@ -137,6 +62,7 @@ export function setupPhysics() {
             
             currentOffsetX = parseFloat(contenedorTabs.style.getPropertyValue('--offset-x')) || 0;
             currentOffsetY = parseFloat(contenedorTabs.style.getPropertyValue('--offset-y')) || 0;
+            document.body.style.cursor = 'move';
         }
         else if (e.target.id === 'textoCartaGriton') {
             e.preventDefault();
@@ -201,10 +127,13 @@ export function setupPhysics() {
             document.body.style.cursor = 'auto';
             changed = true;
         }
-        if (isDraggingMiTablilla) { isDraggingMiTablilla = false; changed = true; }
+        if (isDraggingMiTablilla) { 
+            isDraggingMiTablilla = false; 
+            document.body.style.cursor = 'auto';
+            changed = true; 
+        }
         if (isDraggingGriton) { isDraggingGriton = false; changed = true; }
         
-        // Guardamos al soltar cualquier pieza
         if (changed) guardarLayout();
     });
 }

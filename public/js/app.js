@@ -13,7 +13,6 @@ state.socketId = socket.id;
 
 // ==========================================
 // LÓGICA DE DIBUJO COMPLEJA (Callbacks)
-// (Este archivo ahora solo actúa como el Director de Orquesta)
 // ==========================================
 function renderizarTablillasCallback(t) {
     const contBotones = document.getElementById('botonesTablilla');
@@ -26,14 +25,26 @@ function renderizarTablillasCallback(t) {
         const divTab = document.createElement('div'); divTab.className = 'tablilla';
         divTab.id = 'tablilla-dom-' + tab.id;
         
-        let handleHTML = ''; 
-        let claseHeader = ''; 
+        let controlesTop = ''; 
+        let contenedorLoteria = ''; 
+        let nombreTablilla = tab.isCustom ? '¡Tu Tablilla!' : `Tablilla ${tab.id}`;
+        
+        // CORRECCIÓN: El título siempre existe en el HTML para que se vea bien en el lobby
+        let tituloHTML = `<h4>${nombreTablilla}</h4>`;
         
         if (tab.bloqueadaPor) { 
             if (tab.bloqueadaPor === socket.id) {
                 divTab.classList.add('bloqueada-mia');
-                handleHTML = `<div class="resizer-handle" title="Arrastra en cualquier dirección">⤡ Arrastrar para ajustar tamaño</div>`;
-                claseHeader = 'arrastrable-header';
+                // Esto asegura que NO haya título cuando es tu turno
+                tituloHTML = ''; 
+                
+                controlesTop = `
+                    <div class="controles-superiores-tablilla">
+                        <div class="resizer-handle" title="Arrastra para ajustar tamaño">⤡ TAMAÑO</div>
+                        <div class="mover-handle" title="Arrastra para mover">✥ MOVER</div>
+                    </div>
+                `;
+                contenedorLoteria = `<div class="contenedor-titulo-loteria"></div>`;
             } else {
                 divTab.classList.add('bloqueada-otros');
             }
@@ -43,9 +54,15 @@ function renderizarTablillasCallback(t) {
             else divTab.classList.add('viendo-otros'); 
         }
         
-        let nombreTablilla = tab.isCustom ? '¡Tu Tablilla!' : `Tablilla ${tab.id}`;
-        
-        divTab.innerHTML = `${handleHTML}<h4 class="${claseHeader}">${nombreTablilla}</h4><div class="grid-cartas"></div>`;
+        divTab.innerHTML = `
+            ${controlesTop}
+            <div class="tablilla-header-container">
+                ${tituloHTML}
+                ${contenedorLoteria}
+            </div>
+            <div class="grid-cartas"></div>
+        `;
+
         const grid = divTab.querySelector('.grid-cartas');
         
         tab.cartas.forEach(c => { 
@@ -65,7 +82,7 @@ function renderizarTablillasCallback(t) {
         });
 
         divTab.addEventListener('pointerdown', (e) => { 
-            if(e.target.classList.contains('resizer-handle')) return; 
+            if(e.target.classList.contains('resizer-handle') || e.target.classList.contains('mover-handle')) return; 
             e.preventDefault();
             if (state.miRol === 'jugador' && !tab.bloqueadaPor) socket.emit('ver_tablilla', { nombreSala: state.miSalaActual, idTablilla: tab.id }); 
         });
@@ -148,13 +165,8 @@ function renderTabEspectadoresCb() {
     });
 }
 
-// ==========================================
 // INICIALIZACIÓN GLOBAL DE MÓDULOS
-// ==========================================
 setupUIEvents(socket);
 setupPhysics(); 
 setupCreador(socket);
-setupSocketClient(socket, { 
-    renderizarTablillasCallback, 
-    construirPanelEspectadorCb 
-});
+setupSocketClient(socket, { renderizarTablillasCallback, construirPanelEspectadorCb });

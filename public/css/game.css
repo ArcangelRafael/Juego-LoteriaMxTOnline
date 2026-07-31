@@ -1,9 +1,5 @@
 /* public/css/game.css */
 
-/* =========================================
-   NÚCLEO DEL JUEGO (Lotería y Mesa)
-   ========================================= */
-
 /* Transiciones Juego */
 .oculto-juego { animation: colapsarPanel 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards !important; pointer-events: none; overflow: hidden; }
 @keyframes colapsarPanel { 0% { opacity: 1; max-height: 800px; transform: scaleY(1); margin-bottom: 25px; padding-top: 20px; padding-bottom: 20px; border-width: 1px; } 30% { opacity: 0; transform: scaleY(0.95); } 100% { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; border-width: 0; transform: scaleY(0); } }
@@ -14,15 +10,12 @@
 
 /* Zona Gritón y Botones */
 .botones-tablilla-container { margin: 20px 0; display: flex; gap: 15px;}
-.btn-loteria { background: linear-gradient(135deg, #fbbf24, #d97706); border: 2px solid #fef3c7; color: #fff; font-size: 28px; padding: 15px 40px; border-radius: 12px; box-shadow: 0 0 30px rgba(245, 158, 11, 0.5); text-shadow: 1px 1px 2px rgba(0,0,0,0.5); animation: pulseLoteria 2s infinite; }
-@keyframes pulseLoteria { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 .carta-griton { font-size: 2em; font-weight: 800; text-shadow: 0 2px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; gap: 20px;}
 
 /* TABLILLAS Y CARTAS */
 #contenedorTablillas, #contenedorEspectador { display: flex; flex-wrap: wrap; gap: 25px; margin-top: 20px; justify-content: center; }
 .tablilla { background: #e2e8f0; padding: 15px; border-radius: 8px; width: 240px; box-shadow: 0 10px 25px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.5); color: #1e293b; position: relative; transition: transform 0.3s ease, box-shadow 0.3s ease; }
 .tablilla:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.6); }
-.tablilla h4 { margin: 0 0 15px 0; text-align: center; font-size: 1.1em; color: #334155; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;}
 
 .viendo-otros { border: 2px solid var(--accent-gold); box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); } 
 .viendo-mia { border: 2px solid var(--accent-blue); box-shadow: 0 0 20px rgba(59, 130, 246, 0.6); transform: scale(1.02); }
@@ -63,14 +56,9 @@
 .carta-lanzada { position: absolute; top: 0; left: 0; animation: lanzarCarta 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 
 .mesa-activa { overflow: visible; }
-.mesa-activa #contenedorTablillas { position: absolute; bottom: 15px; left: 42%; transform: translate(calc(-50% + var(--offset-x, 0px)), var(--offset-y, 0px)) scaleX(var(--escala-x, 1.35)) scaleY(var(--escala-y, 1.35)); transform-origin: bottom center; z-index: 20; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+/* CORRECCIÓN 1: La escala por defecto de la mesa ahora es 1 en vez de 1.35 */
+.mesa-activa #contenedorTablillas { position: absolute; bottom: 15px; left: 42%; transform: translate(calc(-50% + var(--offset-x, 0px)), var(--offset-y, 0px)) scaleX(var(--escala-x, 1)) scaleY(var(--escala-y, 1)); transform-origin: bottom center; z-index: 20; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 15px; }
 .mesa-activa .chat-juego { position: absolute !important; bottom: 30px; right: 30px; margin: 0; width: 320px; height: 400px; z-index: 30; animation: deslizarChat 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; background: rgba(15, 23, 42, 0.85); }
-.mesa-activa #panelEspectadorUI { position: absolute; bottom: 15px; left: 62%; transform: translateX(-50%); width: 220px; padding: 15px; border-radius: 12px; background: rgba(15, 23, 42, 0.85); border: 1px solid var(--border-panel); box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 30; margin: 0; }
-.mesa-activa #panelEspectadorUI h3 { margin: 0; border: none; padding: 0; font-size: 16px; }
-.mesa-activa #btnLoteria { margin-top: 15px; width: 100%; font-size: 22px; padding: 12px; animation: pulseLoteria 2s infinite; }
-.mesa-activa #listaChecksJugadores { display: flex; flex-direction: column; gap: 5px; max-height: 250px; overflow-y: auto; }
-.mesa-activa #listaChecksJugadores::-webkit-scrollbar { width: 4px; }
-.mesa-activa #listaChecksJugadores::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
 .mesa-activa #contenedorEspectador { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; margin: 0; }
 
 .tablilla-enemiga { position: absolute; transform: translate(-50%, -50%) scale(0.65) rotate(var(--rotacion, 0deg)); pointer-events: auto; box-shadow: 0 15px 35px rgba(0,0,0,0.8); transition: transform 0.4s ease, left 0.8s ease, top 0.8s ease; z-index: 10; }
@@ -80,43 +68,113 @@
 .notificacion-flotante { position: fixed; bottom: 30px; right: 30px; background: rgba(16, 185, 129, 0.9); backdrop-filter: blur(5px); color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); font-weight: 600; display: none; z-index: 100;}
 .chat-ingame-flotante { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; align-items: center; gap: 10px; padding: 10px 25px; border-radius: 50px; width: 500px; max-width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.8); background: rgba(15, 23, 42, 0.95); border: 2px solid var(--accent-blue); }
 .chat-ingame-flotante input { outline: none; flex: 1; font-size: 16px; font-weight: 600; color: white; min-width: 0; }
-.btn-flotante-chat { position: fixed; bottom: 30px; left: 30px; width: 55px; height: 55px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-hover)); color: white; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 300; border: none; transition: transform 0.2s; }
-.btn-flotante-chat:active { transform: scale(0.9); }
 
 .burbuja-chat { position: absolute; bottom: 105%; left: 50%; background: white; color: #1e293b; padding: 12px 18px; border-radius: 20px; font-size: 14px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,0.6); z-index: 250; pointer-events: none; max-width: 220px; text-align: center; white-space: normal; word-wrap: break-word; animation: flotarDesvanecer 5.5s ease-in-out forwards; }
 .burbuja-chat::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -8px; border-width: 8px; border-style: solid; border-color: white transparent transparent transparent; }
 @keyframes flotarDesvanecer { 0% { opacity: 0; transform: translate(-50%, 20px) scale(0.8) rotate(calc(-1 * var(--rotacion, 0deg))); } 10% { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(calc(-1 * var(--rotacion, 0deg))); } 85% { opacity: 1; transform: translate(-50%, -15px) scale(1) rotate(calc(-1 * var(--rotacion, 0deg))); } 100% { opacity: 0; transform: translate(-50%, -40px) scale(0.8) rotate(calc(-1 * var(--rotacion, 0deg))); } }
-.burbuja-chat-contenido { display: flex; align-items: center; gap: 10px; text-align: left; }
 .burbuja-foto { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #cbd5e1; }
+.burbuja-chat-contenido { display: flex; align-items: center; gap: 10px; text-align: left; }
 .espectador-panel.minimizado { background: rgba(15, 23, 42, 0.4) !important; backdrop-filter: blur(4px); border-color: transparent; }
 
-/* FÍSICAS DE GRITÓN Y MESA (CORRECCIÓN ARRASTRE PC) */
+/* FÍSICAS DE GRITÓN Y MESA */
 .zona-griton { text-align: center; margin: 30px 0; }
 .mesa-activa .zona-griton { position: absolute; top: 28%; left: 50%; transform: translate(calc(-50% + var(--griton-x, 0px)), var(--griton-y, 0px)); margin: 0; width: 100%; z-index: 5; }
 #textoCartaGriton { cursor: grab; touch-action: none; user-select: none; transition: background 0.2s; }
 #textoCartaGriton:active { cursor: grabbing; background: rgba(59, 130, 246, 0.5) !important; }
 
-/* PESTAÑA PARA REDIMENSIONAR (RESIZER) */
-.resizer-handle { display: none; background: var(--accent-blue); color: white; text-align: center; font-size: 10px; padding: 6px; margin: -15px -15px 10px -15px; border-radius: 8px 8px 0 0; cursor: move; font-weight: 800; user-select: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); touch-action: none; }
-.mesa-activa .resizer-handle { display: block; }
-
-/* CABECERA ARRASTRABLE */
-.mesa-activa .arrastrable-header { cursor: grab; background: #e2e8f0; border: 3px solid #1e293b; border-radius: 6px; padding: 6px; margin: 0 0 15px 0 !important; transition: background 0.2s; user-select: none; touch-action: none; }
-.mesa-activa .arrastrable-header:hover { background: #cbd5e1; }
-.mesa-activa .arrastrable-header:active { cursor: grabbing; background: #94a3b8; }
-
-/* CLASE PARA LA ANIMACIÓN FLIP DEL CREADOR (Y LA MESA) */
 .ghost-carta-vuelo { position: fixed; z-index: 99999; object-fit: cover; border-radius: 6px; pointer-events: none; box-shadow: 0 15px 35px rgba(0,0,0,0.6); transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
 
 /* =========================================
-   RESPONSIVE GAMEPLAY
+   NUEVAS CLASES: BARRA 50/50 Y BOTÓN LOTERÍA
    ========================================= */
+/* CORRECCIÓN 2: Ocultamos las pestañas por defecto en el Lobby */
+.controles-superiores-tablilla { display: none; width: calc(100% + 30px); margin: -15px -15px 10px -15px; border-radius: 8px 8px 0 0; overflow: hidden; }
+
+/* SOLO activamos la barra cuando el juego arranca (.mesa-activa) */
+.mesa-activa .bloqueada-mia .controles-superiores-tablilla { display: flex !important; }
+
+.resizer-handle, .mover-handle { flex: 1; padding: 10px 5px; font-size: 11px; font-weight: 800; text-align: center; color: white; user-select: none; touch-action: none; text-transform: uppercase; display: block !important; }
+.resizer-handle { background: var(--accent-blue); cursor: nwse-resize; }
+.mover-handle { background: var(--accent-green); cursor: move; }
+.resizer-handle:active { background: var(--accent-blue-hover); }
+.mover-handle:active { background: var(--accent-green-hover); }
+
+/* Título de la tablilla y Contenedor del Botón Lotería */
+.tablilla-header-container { text-align: center; margin-bottom: 10px; }
+.tablilla-header-container h4 { margin: 0; padding-bottom: 5px; border-bottom: 2px solid #cbd5e1; font-size: 1.1em; color: #334155; }
+
+/* CORRECCIÓN 3: Desaparecemos el título "Tablilla N" mágicamente al iniciar la partida */
+.mesa-activa .bloqueada-mia .tablilla-header-container h4 { display: none; }
+
+.contenedor-titulo-loteria { margin-top: 0px; }
+.contenedor-titulo-loteria #btnLoteria { background: linear-gradient(135deg, #fbbf24, #d97706); border: 2px solid #fef3c7; color: #fff; width: 100%; padding: 12px; font-size: 22px; border-radius: 8px; font-weight: 800; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); margin: 0; animation: pulseLoteria 2s infinite; cursor: pointer; }
+
+/* =========================================
+   ANCLAJES PERFECTOS A LA TABLILLA (OREJAS EXTERNAS)
+   ========================================= */
+
+/* ANCLAJES PERFECTOS A LA TABLILLA (OREJAS EXTERNAS) */
+/* PANEL ESPECTADOR: Anclado AFUERA a la derecha inferior */
+.mesa-activa .bloqueada-mia #panelEspectadorUI { 
+    position: absolute !important; 
+    bottom: 0px !important; 
+    left: calc(100% + 15px) !important; 
+    right: auto !important; 
+    top: auto !important; 
+    transform: none !important; 
+    margin: 0 !important; 
+    width: 160px !important;
+    z-index: 100 !important; 
+    cursor: default !important; 
+    
+    /* TRUCO: Cancela el escalado del padre */
+    transform: scale(calc(1 / var(--escala-x, 1))) !important; 
+    transform-origin: bottom left !important;
+}
+
+/* BOTÓN CHAT EMOJI: Anclado AFUERA a la izquierda inferior */
+.mesa-activa .bloqueada-mia #btnAbrirChatMovil {
+    position: absolute !important;
+    bottom: 0px !important;
+    right: calc(100% + 15px) !important; 
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    margin: 0 !important;
+    z-index: 100 !important;
+    width: 55px !important; 
+    height: 55px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-hover)) !important;
+    color: white !important;
+    font-size: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+    border: none !important;
+    
+    /* TRUCO: Cancela el escalado del padre */
+    transform: scale(calc(1 / var(--escala-x, 1))) !important;
+    transform-origin: bottom right !important;
+}
+
+/* Ocultar pestañas 50/50 en el lobby */
+.controles-superiores-tablilla { display: none; width: calc(100% + 30px); margin: -15px -15px 10px -15px; border-radius: 8px 8px 0 0; overflow: hidden; }
+.mesa-activa .bloqueada-mia .controles-superiores-tablilla { display: flex !important; }
+
+/* ... (resto del css sin cambios) ... */
+.mesa-activa .bloqueada-mia #btnAbrirChatMovil:active { transform: scale(0.9) !important; }
+
 @media (max-width: 768px) {
     .mesa-activa .zona-griton { position: absolute; top: 38%; left: 50%; transform: translate(calc(-50% + var(--griton-x, 0px)), var(--griton-y, 0px)) scale(0.85); margin: 0; width: 100%; z-index: 5; }
-    .mesa-activa #contenedorTablillas { left: 50%; bottom: 15px; transform: translate(calc(-50% + var(--offset-x, 0px)), var(--offset-y, 0px)) scaleX(var(--escala-x, 1.18)) scaleY(var(--escala-y, 1.18)); transform-origin: bottom center; z-index: 20; }
+    /* Corrección de escala en celulares también a 1 por defecto */
+    .mesa-activa #contenedorTablillas { left: 50%; bottom: 15px; transform: translate(calc(-50% + var(--offset-x, 0px)), var(--offset-y, 0px)) scaleX(var(--escala-x, 1)) scaleY(var(--escala-y, 1)); transform-origin: bottom center; z-index: 20; }
     .griton-mesa-container { gap: 15px; --start-x: 235px; }
-    .mesa-activa #panelEspectadorUI { left: auto; right: 15px; bottom: 15px; transform: none; width: 150px; z-index: 30; }
-    .mesa-activa #btnLoteria { font-size: 16px; padding: 10px; }
+    
+    .mesa-activa .bloqueada-mia #panelEspectadorUI { left: calc(100% + 5px) !important; width: 130px !important; padding: 10px !important; }
+    .mesa-activa .bloqueada-mia #btnAbrirChatMovil { right: calc(100% + 5px) !important; width: 45px !important; height: 45px !important; }
+    
     .tablilla-enemiga { transform: translate(-50%, -50%) scale(0.55) rotate(var(--rotacion, 0deg)) !important; }
     .tablilla-enemiga:hover { transform: translate(-50%, -50%) scale(0.7) rotate(var(--rotacion, 0deg)) !important; }
 }

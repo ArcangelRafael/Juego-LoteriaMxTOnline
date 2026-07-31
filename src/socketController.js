@@ -164,6 +164,9 @@ module.exports = function (io, socket) {
         }, 1000);
     };
 
+    // ==========================================
+    // REVOLVER MAZO (CON CONTEO)
+    // ==========================================
     const procesarResultadoVotacionRevolver = (nombreSala) => {
         const sala = partidasActivas[nombreSala]; clearInterval(sala.votacion.temporizador);
         const numHumanos = sala.getHumanos().filter(j => j.rol === 'jugador').length;
@@ -184,8 +187,23 @@ module.exports = function (io, socket) {
             });
 
             sala.estado = 'jugando'; sala.mazo = sala.mezclar(BARAJA_BASE); sala.cartasJugadas = [];
-            io.to(nombreSala).emit('votacion_revolver_cerrada', true); io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: '¡El mazo se ha revuelto!' });
-            sala.intervalo = setInterval(() => sacarCarta(nombreSala), sala.config.velocidadGriton);
+            io.to(nombreSala).emit('votacion_revolver_cerrada', true); 
+            io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: '¡El mazo se ha revuelto!' });
+            
+            let tiempoEspera = 3; // Tiempo universal para reiniciar el mazo
+            io.to(nombreSala).emit('actualizar_texto_carta', `¡Mazo revuelto! Iniciando en ${tiempoEspera}s...`);
+            
+            sala.intervalo = setInterval(() => {
+                tiempoEspera--;
+                if(tiempoEspera > 0) {
+                    io.to(nombreSala).emit('actualizar_texto_carta', `¡Mazo revuelto! Iniciando en ${tiempoEspera}s...`);
+                } else {
+                    clearInterval(sala.intervalo);
+                    sacarCarta(nombreSala);
+                    sala.intervalo = setInterval(() => sacarCarta(nombreSala), sala.config.velocidadGriton);
+                }
+            }, 1000);
+
         } else {
             io.to(nombreSala).emit('votacion_revolver_cerrada', false); finalizarPartidaVisual(nombreSala);
         }
@@ -245,6 +263,9 @@ module.exports = function (io, socket) {
         }
     };
 
+    // ==========================================
+    // REANUDAR PARTIDA DESPUÉS DE VICTORIA (CON CONTEO)
+    // ==========================================
     const procesarResultadoVotacionContinuar = (nombreSala) => {
         const sala = partidasActivas[nombreSala]; clearInterval(sala.votacion.temporizador);
         const numHumanos = sala.getHumanos().filter(j => j.rol === 'jugador').length;
@@ -252,11 +273,43 @@ module.exports = function (io, socket) {
         let continua = sala.votacion.votosSi > votosNo ? true : (sala.votacion.votosSi === votosNo ? sala.votacion.votoAnfitrion : false);
 
         if (continua) {
-            sala.estado = 'jugando'; io.to(nombreSala).emit('votacion_cerrada', true);
-            if (sala.mazo.length > 0) sala.intervalo = setInterval(() => sacarCarta(nombreSala), sala.config.velocidadGriton);
-            else iniciarPeriodoDeGracia(nombreSala);
+            sala.estado = 'jugando'; 
+            io.to(nombreSala).emit('votacion_cerrada', true);
+            
+            if (sala.mazo.length > 0) {
+                // El tiempo de espera será igual al tiempo configurado para marcar (ej: 5000ms = 5s)
+                let tiempoEspera = Math.floor(sala.config.tiempoMarcar / 1000);
+                const ultimaCarta = sala.cartasJugadas[sala.cartasJugadas.length - 1];
+                
+                // Le pedimos al cliente que desbloquee la última carta en la interfaz
+                if (ultimaCarta) {
+                    io.to(nombreSala).emit('reactivar_ultima_carta', { 
+                        carta: ultimaCarta, 
+                        tiempo: sala.config.tiempoMarcar 
+                    });
+                }
+
+                io.to(nombreSala).emit('actualizar_texto_carta', `El juego continúa en ${tiempoEspera}s...`);
+                
+                // Conteo regresivo visual
+                sala.intervalo = setInterval(() => {
+                    tiempoEspera--;
+                    if (tiempoEspera > 0) {
+                        io.to(nombreSala).emit('actualizar_texto_carta', `El juego continúa en ${tiempoEspera}s...`);
+                    } else {
+                        // Termina el conteo, sacamos la siguiente carta inmediatamente y volvemos a la normalidad
+                        clearInterval(sala.intervalo);
+                        sacarCarta(nombreSala);
+                        sala.intervalo = setInterval(() => sacarCarta(nombreSala), sala.config.velocidadGriton);
+                    }
+                }, 1000);
+
+            } else {
+                iniciarPeriodoDeGracia(nombreSala);
+            }
         } else {
-            io.to(nombreSala).emit('votacion_cerrada', false); finalizarPartidaVisual(nombreSala);
+            io.to(nombreSala).emit('votacion_cerrada', false); 
+            finalizarPartidaVisual(nombreSala);
         }
     };
 
@@ -326,31 +379,23 @@ module.exports = function (io, socket) {
         }))
     );
     
-    // ==========================================
-    // RECONEXIÓN MÁGICA (A PRUEBA DE F5 Y RACE CONDITIONS)
-    // ==========================================
     socket.on('intento_reconexion', (datos) => {
         const sala = partidasActivas[datos.nombreSala];
         if (!sala) return socket.emit('reconexion_fallida');
         
-        // CORRECCIÓN CLAVE: Ya no exigimos que j.desconectado sea TRUE.
-        // Si alguien llega con el mismo Token (F5), se la robamos al socket viejo de inmediato.
         const entrada = Object.entries(sala.jugadores).find(([id, j]) => j.sessionId === datos.sessionId);
         
         if (entrada) {
             const oldId = entrada[0];
             const jugador = entrada[1];
             
-            // Frenamos el contador de la muerte si es que ya había empezado
             if (jugador.timerReconexion) {
                 clearTimeout(jugador.timerReconexion);
                 jugador.timerReconexion = null;
             }
             jugador.desconectado = false;
             
-            // Si por alguna rareza el ID de socket es el mismo, no hacemos trasplante
             if (oldId !== socket.id) {
-                // EL TRASPLANTE: Mudamos la sesión al nuevo socket
                 sala.jugadores[socket.id] = sala.jugadores[oldId];
                 delete sala.jugadores[oldId];
                 
@@ -372,7 +417,6 @@ module.exports = function (io, socket) {
 
             socket.join(datos.nombreSala);
             
-            // Construir paquete de estado para recuperar el HTML (UI)
             const infoJugadores = {};
             for(const id in sala.jugadores) {
                 if(sala.jugadores[id].rol === 'jugador') {
@@ -666,13 +710,11 @@ module.exports = function (io, socket) {
         }
     });
 
-    // Salida Voluntaria (El botón rojo de salir o el boton de expulsar)
     socket.on('salir_sala', () => { 
         manejarSalidaJugador(socket.id, true); 
         socket.emit('salida_exitosa'); 
     });
     
-    // Desconexión Involuntaria (Cierre de App, F5, WiFi perdido)
     socket.on('disconnect', () => { 
         manejarSalidaJugador(socket.id, false); 
     });

@@ -13,20 +13,12 @@ const TEXTO_LOBBY = `
 export function setupSocketClient(socket, callbacks) {
     const { renderizarTablillasCallback, construirPanelEspectadorCb } = callbacks;
 
-    // ==========================================
-    // SISTEMA DE RECONEXIÓN DE RED (INSTANTÁNEO)
-    // ==========================================
-    
     window.addEventListener('offline', () => {
-        if (state.miSalaActual) {
-            document.getElementById('modalReconexion').style.display = 'flex';
-        }
+        if (state.miSalaActual) document.getElementById('modalReconexion').style.display = 'flex';
     });
 
     window.addEventListener('online', () => {
-        if (state.miSalaActual && socket.connected) {
-            socket.emit('intento_reconexion', { nombreSala: state.miSalaActual, sessionId: state.sessionId });
-        }
+        if (state.miSalaActual && socket.connected) socket.emit('intento_reconexion', { nombreSala: state.miSalaActual, sessionId: state.sessionId });
     });
 
     socket.on('disconnect', () => {
@@ -44,7 +36,9 @@ export function setupSocketClient(socket, callbacks) {
         state.socketId = socket.id;
         document.getElementById('modalReconexion').style.display = 'none';
 
-        // Restaurar variables
+        const panelEsp = document.getElementById('panelEspectadorUI'); if(panelEsp) document.body.appendChild(panelEsp);
+        const btnChat = document.getElementById('btnAbrirChatMovil'); if(btnChat) document.body.appendChild(btnChat);
+
         state.miSalaActual = datos.nombreSala;
         state.miRol = datos.rol;
         state.soyAnfitrion = datos.esAnfitrion;
@@ -53,12 +47,10 @@ export function setupSocketClient(socket, callbacks) {
         
         ui.actualizarUIConfig(datos.config, state);
         
-        // Limpiar Modales
         document.getElementById('modalAFK').style.display = 'none';
         document.getElementById('modalVotacion').style.display = 'none';
         document.getElementById('modalSinCartas').style.display = 'none';
 
-        // Forzar Ocultamiento de la Pantalla Principal
         document.getElementById('pantallaMenu').classList.remove('activa');
         document.getElementById('pantallaResultados').classList.remove('activa');
         document.getElementById('pantallaLobby').classList.add('activa');
@@ -86,7 +78,6 @@ export function setupSocketClient(socket, callbacks) {
             if (btnCreador) btnCreador.style.display = 'block';
         }
 
-        // Si el juego estaba en curso, ir a la mesa y restaurar todo
         if (['jugando', 'gracia', 'votando', 'votando_revolver'].includes(datos.estadoSala)) {
             state.juegoEnCurso = true;
             ui.prepararInterfazJuego(state, construirPanelEspectadorCb);
@@ -136,14 +127,12 @@ export function setupSocketClient(socket, callbacks) {
                 }
             }
 
-            // --- NUEVO: RESTAURAR POSICIONES DEL LAYOUT GUARDADO ---
             const savedLayout = sessionStorage.getItem('loteria_layout');
             if (savedLayout) {
                 try {
                     const l = JSON.parse(savedLayout);
                     const contenedorTabs = document.getElementById('contenedorTablillas');
                     const zonaGriton = document.querySelector('.zona-griton');
-                    const panelEspectador = document.getElementById('panelEspectadorUI');
 
                     if (l.tabScaleX) contenedorTabs.style.setProperty('--escala-x', l.tabScaleX);
                     if (l.tabScaleY) contenedorTabs.style.setProperty('--escala-y', l.tabScaleY);
@@ -153,17 +142,6 @@ export function setupSocketClient(socket, callbacks) {
                     if (zonaGriton) {
                         if (l.gritonX) zonaGriton.style.setProperty('--griton-x', l.gritonX);
                         if (l.gritonY) zonaGriton.style.setProperty('--griton-y', l.gritonY);
-                    }
-
-                    if (l.panelLeft && panelEspectador) {
-                        panelEspectador.style.position = l.panelPos || 'fixed';
-                        panelEspectador.style.left = l.panelLeft;
-                        panelEspectador.style.top = l.panelTop;
-                        panelEspectador.style.right = 'auto';
-                        panelEspectador.style.bottom = 'auto';
-                        panelEspectador.style.transform = 'none';
-                        panelEspectador.style.margin = '0';
-                        if (l.panelZ) panelEspectador.style.zIndex = l.panelZ;
                     }
                 } catch (e) { console.error('Error restaurando layout:', e); }
             }
@@ -177,10 +155,6 @@ export function setupSocketClient(socket, callbacks) {
         window.location.reload(); 
     });
 
-
-    // ==========================================
-    // EVENTOS DE SOCKET.IO
-    // ==========================================
     socket.on('salas_publicas_actualizadas', (salas) => ui.pintarSalasPublicas(salas));
     
     socket.on('partida_rapida_encontrada', (d) => { 
@@ -250,19 +224,14 @@ export function setupSocketClient(socket, callbacks) {
             sessionStorage.setItem('loteria_sala_actual', datos.nombreSala);
             socket.emit('unirse_sala', { nombreSala: datos.nombreSala, codigoSala: datos.codigoSala, rolElegido: 'espectador', sessionId: state.sessionId });
         };
-        
-        document.getElementById('btnRechazarEspectador').onclick = () => {
-            modal.style.display = 'none';
-        };
+        document.getElementById('btnRechazarEspectador').onclick = () => { modal.style.display = 'none'; };
     });
 
     socket.on('sala_creada', (d) => { 
         state.soyAnfitrion = true; state.miRol = 'jugador'; ui.actualizarUIConfig(d.config, state); ui.initLobby(d.nombreSala, d.codigoSala, d.tablillas, renderizarTablillasCallback); 
         document.getElementById('etiquetaHost').style.display='inline'; document.getElementById('btnIniciar').style.display = 'inline-block'; 
         document.getElementById('panelConfiguracion').classList.add('es-host'); document.getElementById('controlesBot').style.display = 'block';
-        
-        const btnCreador = document.getElementById('contenedorBtnCreador');
-        if (btnCreador) btnCreador.style.display = 'block';
+        const btnCreador = document.getElementById('contenedorBtnCreador'); if (btnCreador) btnCreador.style.display = 'block';
     });
 
     socket.on('sala_unida', (d) => { 
@@ -270,9 +239,7 @@ export function setupSocketClient(socket, callbacks) {
         document.getElementById('btnCambiarRol').textContent = state.miRol === 'jugador' ? 'Cambiar a Espectador' : 'Cambiar a Jugador';
         const cont = document.getElementById('contenedorTablillas');
         if (state.miRol === 'espectador') { cont.style.opacity = '0.5'; cont.style.pointerEvents = 'none'; } else { cont.style.opacity = '1'; cont.style.pointerEvents = 'auto'; }
-        
-        const btnCreador = document.getElementById('contenedorBtnCreador');
-        if (btnCreador) btnCreador.style.display = (d.rol === 'jugador') ? 'block' : 'none';
+        const btnCreador = document.getElementById('contenedorBtnCreador'); if (btnCreador) btnCreador.style.display = (d.rol === 'jugador') ? 'block' : 'none';
     });
 
     socket.on('unido_como_espectador', (d) => { 
@@ -290,9 +257,7 @@ export function setupSocketClient(socket, callbacks) {
         if (state.miRol === 'espectador') { cont.style.opacity = '0.5'; cont.style.pointerEvents = 'none'; } else { cont.style.opacity = '1'; cont.style.pointerEvents = 'auto'; }
         if (state.configSala.sinEspectadores) document.getElementById('btnCambiarRol').style.display = 'none';
         document.getElementById('botonesTablilla').style.display = 'none'; 
-        
-        const btnCreador = document.getElementById('contenedorBtnCreador');
-        if (btnCreador) btnCreador.style.display = (state.miRol === 'jugador') ? 'block' : 'none';
+        const btnCreador = document.getElementById('contenedorBtnCreador'); if (btnCreador) btnCreador.style.display = (state.miRol === 'jugador') ? 'block' : 'none';
     });
 
     socket.on('actualizar_listas', (listas) => ui.actualizarListas(listas, state));
@@ -316,6 +281,7 @@ export function setupSocketClient(socket, callbacks) {
             }
         } 
     });
+    
     socket.on('nuevo_anfitrion', () => {
         state.soyAnfitrion = true; document.getElementById('etiquetaHost').style.display = 'inline'; 
         if(!state.juegoEnCurso) { document.getElementById('btnIniciar').style.display = 'inline-block'; document.getElementById('panelConfiguracion').classList.add('es-host'); document.getElementById('controlesBot').style.display = 'block'; }
@@ -341,7 +307,8 @@ export function setupSocketClient(socket, callbacks) {
         if (state.juegoEnCurso) {
             document.querySelectorAll('.tablilla').forEach(el => {
                 if(!el.classList.contains('bloqueada-mia') && state.miRol === 'jugador') el.style.display = 'none';
-                else if (state.miRol === 'espectador') el.style.display = 'none'; else el.classList.remove('bloqueada-mia'); 
+                else if (state.miRol === 'espectador') el.style.display = 'none'; 
+                // CORRECCIÓN: Eliminamos la línea que borraba la clase 'bloqueada-mia'
             });
             document.getElementById('botonesTablilla').style.display = 'none';
         }
@@ -371,6 +338,59 @@ export function setupSocketClient(socket, callbacks) {
         }
         
         textoSpan.textContent = texto; 
+    });
+
+    socket.on('reactivar_ultima_carta', (datos) => {
+        const numCarta = datos.carta.split(' ')[1]; 
+        const tiempoMarcar = datos.tiempo;
+        const tsLlegada = Date.now(); 
+        
+        if (state.miRol === 'espectador') {
+            document.querySelectorAll('#contenedorEspectador .carta').forEach(div => {
+                if (div.dataset.numero === numCarta && !div.classList.contains('marcada')) {
+                    div.classList.add('marcable-visual'); 
+                    setTimeout(() => div.classList.remove('marcable-visual'), tiempoMarcar);
+                }
+            });
+        }
+
+        if (state.miRol === 'jugador') {
+            document.querySelectorAll('#contenedorTablillas .carta').forEach(div => {
+                if (div.dataset.numero === numCarta && !div.classList.contains('marcada')) {
+                    div.dataset.activa = "true"; 
+                    div.style.cursor = "pointer";
+                    if (state.configSala.ayudaNinos) div.classList.add('marcable-visual');
+                    
+                    const t = setTimeout(() => { 
+                        div.dataset.activa = "false"; 
+                        div.style.cursor = "default"; 
+                        div.classList.remove('marcable-visual'); 
+                    }, tiempoMarcar);
+                    
+                    div.onpointerdown = function(e) {
+                        e.preventDefault(); 
+                        if (div.dataset.activa === "true" && !div.classList.contains('marcada')) {
+                            const msReaccion = Date.now() - tsLlegada; 
+                            clearTimeout(t); 
+                            div.dataset.activa = "false"; 
+                            div.classList.remove('marcable-visual'); 
+                            div.style.cursor = "default"; 
+                            div.classList.add('marcada'); 
+                            
+                            let marcador = '<div class="palomita">✔</div>';
+                            if (state.miFicha === 'peso') marcador = '<div class="palomita"><img src="/assets/img/unpeso.webp" class="ficha-img"></div>';
+                            else if (state.miFicha === 'frijol') marcador = '<div class="palomita"><img src="/assets/img/gfrijol.webp" class="ficha-img"></div>';
+                            else if (state.miFicha === 'arroz') marcador = '<div class="palomita"><img src="/assets/img/garroz.webp" class="ficha-img"></div>';
+                            
+                            div.innerHTML += marcador; 
+                            state.misCartasMarcadas++;
+                            if(state.misCartasMarcadas === 16) document.getElementById('btnLoteria').disabled = false;
+                            socket.emit('marcar_casilla', { nombreSala: state.miSalaActual, carta: datos.carta, ms: msReaccion });
+                        }
+                    };
+                }
+            });
+        }
     });
 
     socket.on('nueva_carta', (carta) => {
@@ -418,7 +438,6 @@ export function setupSocketClient(socket, callbacks) {
             `;
 
             pila.appendChild(carta3D);
-            
             if (pila.children.length > 6) pila.removeChild(pila.firstChild);
         } else { 
             if(texto) texto.textContent = carta; 
@@ -482,16 +501,18 @@ export function setupSocketClient(socket, callbacks) {
             document.getElementById('botonesVotacion').style.display = 'block'; document.getElementById('mensajeEsperaVotacion').style.display = 'none'; document.getElementById('textoPreguntaVotacion').textContent = "¿Deseas continuar con la partida?";
         }
     });
+    
     socket.on('tick_votacion', (tiempo) => { document.getElementById('tiempoVotacion').textContent = tiempo; });
-    socket.on('votacion_cerrada', (continuar) => { document.getElementById('modalVotacion').style.display = 'none'; if(continuar) document.getElementById('cartaActual').textContent = '¡El juego continúa!'; });
+    socket.on('votacion_cerrada', (continuar) => { document.getElementById('modalVotacion').style.display = 'none'; });
     
     socket.on('iniciar_votacion_revolver', (datos) => {
         document.getElementById('modalSinCartas').style.display = 'flex'; document.getElementById('tiempoSinCartas').textContent = datos.tiempo;
         if(state.miRol !== 'jugador') { document.getElementById('botonesSinCartas').style.display = 'none'; document.getElementById('msgEsperaRevolver').style.display = 'block'; } 
         else { document.getElementById('botonesSinCartas').style.display = 'block'; document.getElementById('msgEsperaRevolver').style.display = 'none'; }
     });
+    
     socket.on('tick_votacion_revolver', (tiempo) => { document.getElementById('tiempoSinCartas').textContent = tiempo; });
-    socket.on('votacion_revolver_cerrada', (revolver) => { document.getElementById('modalSinCartas').style.display = 'none'; if(revolver) document.getElementById('cartaActual').textContent = '¡Mazo revuelto! ¡El juego continúa!'; });
+    socket.on('votacion_revolver_cerrada', (revolver) => { document.getElementById('modalSinCartas').style.display = 'none'; });
     
     socket.on('nuevo_ganador_notificacion', (d) => {
         const notif = document.getElementById('notificacionFlotante'); notif.textContent = `¡${d.nombre} ha completado su tablilla (Lugar #${d.posicion})!`;
@@ -500,36 +521,23 @@ export function setupSocketClient(socket, callbacks) {
     
     socket.on('juego_terminado', (datos) => { 
         state.juegoEnCurso = false; 
-        sessionStorage.removeItem('loteria_layout'); // NUEVO: Limpiamos layout al acabar el juego
+        sessionStorage.removeItem('loteria_layout'); 
         ui.mostrarResultados(datos); 
     });
 
     socket.on('regreso_al_lobby_exitoso', () => {
-        // Borramos la memoria de las posiciones para que el siguiente juego no herede posiciones rotas
         sessionStorage.removeItem('loteria_layout'); 
 
+        const panelEsp = document.getElementById('panelEspectadorUI'); if(panelEsp) document.body.appendChild(panelEsp);
+        const btnChat = document.getElementById('btnAbrirChatMovil'); if(btnChat) document.body.appendChild(btnChat);
+
         const zonaGriton = document.querySelector('.zona-griton');
-        if(zonaGriton) {
-            zonaGriton.style.setProperty('--griton-x', '0px');
-            zonaGriton.style.setProperty('--griton-y', '0px');
-        }
+        if(zonaGriton) { zonaGriton.style.setProperty('--griton-x', '0px'); zonaGriton.style.setProperty('--griton-y', '0px'); }
         
         const contenedorTabs = document.getElementById('contenedorTablillas');
-        if(contenedorTabs) {
-            contenedorTabs.style.setProperty('--offset-x', '0px');
-            contenedorTabs.style.setProperty('--offset-y', '0px');
-        }
+        if(contenedorTabs) { contenedorTabs.style.setProperty('--offset-x', '0px'); contenedorTabs.style.setProperty('--offset-y', '0px'); }
         
-        const panelEsp = document.getElementById('panelEspectadorUI');
-        if(panelEsp) {
-            panelEsp.style.position = '';
-            panelEsp.style.left = '';
-            panelEsp.style.top = '';
-            panelEsp.style.right = '';
-            panelEsp.style.bottom = '';
-            panelEsp.style.transform = '';
-            panelEsp.style.margin = '';
-        }
+        if(panelEsp) { panelEsp.style.position = ''; panelEsp.style.left = ''; panelEsp.style.top = ''; panelEsp.style.right = ''; panelEsp.style.bottom = ''; panelEsp.style.transform = ''; panelEsp.style.margin = ''; }
 
         state.juegoEnCurso = false; state.misCartasMarcadas = 0;
         document.getElementById('cartaActual').innerHTML = TEXTO_LOBBY; document.getElementById('cartaActual').style.color = "";
