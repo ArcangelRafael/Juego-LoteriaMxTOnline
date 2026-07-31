@@ -55,4 +55,4 @@ export const CARTAS_LOTERIA = {
     "52": { nombre: "La Maceta", img: "/assets/img/cartas/52.webp" },
     "53": { nombre: "El Arpa", img: "/assets/img/cartas/53.webp" },
     "54": { nombre: "La Rana", img: "/assets/img/cartas/54.webp" },
-};
+}; 
