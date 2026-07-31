@@ -1,0 +1,67 @@
+/* public/css/base.css */
+
+/* =========================================
+   VARIABLES DE COLOR Y TEMA
+   ========================================= */
+:root {
+    --bg-dark: #0f172a;
+    --bg-panel: rgba(30, 41, 59, 0.7);
+    --border-panel: rgba(255, 255, 255, 0.1);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    
+    --accent-blue: #3b82f6;
+    --accent-blue-hover: #2563eb;
+    
+    --accent-green: #10b981;
+    --accent-green-hover: #059669;
+    
+    --accent-gold: #f59e0b;
+    --accent-gold-hover: #d97706;
+    
+    --accent-danger: #ef4444;
+    --accent-danger-hover: #dc2626;
+
+    --glow-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+}
+
+/* =========================================
+   BASE GLOBAL Y TIPOGRAFÍA
+   ========================================= */
+* { 
+    box-sizing: border-box; 
+}
+
+body { 
+    font-family: 'Montserrat', sans-serif; 
+    margin: 0; 
+    padding: 20px; 
+    background: radial-gradient(circle at top, #1e293b 0%, var(--bg-dark) 100%); 
+    color: var(--text-main); 
+    min-height: 100vh; 
+}
+
+/* Sistema de navegación por "Secciones" */
+.seccion { display: none; margin-top: 20px; animation: fadeIn 0.4s ease-in-out; }
+.activa { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* =========================================
+   CLASES UTILITARIAS GLOBALES
+   ========================================= */
+.m-0 { margin: 0; }
+.mr-3 { margin-right: 15px; }
+
+/* Alineación de texto */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+
+/* Colores de texto rápidos */
+.text-muted { color: var(--text-muted); }
+.text-highlight { color: #38bdf8; font-weight: 600; }
+.text-danger { color: #f87171; }
+.text-warning { color: #fbbf24; }
+.text-gold { color: var(--accent-gold); }
+
+/* Separadores */
+.divider { border: 0; height: 1px; background: var(--border-panel); margin: 15px 0; }

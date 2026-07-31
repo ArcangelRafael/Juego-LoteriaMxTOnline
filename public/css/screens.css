@@ -1,0 +1,114 @@
+/* public/css/screens.css */
+
+/* =========================================
+   1. PANTALLA: MENÚ PRINCIPAL
+   ========================================= */
+.menu-principal-container { padding: 50px; max-width: 800px; margin: 40px auto; text-align: center;}
+.main-title { font-size: 3.5em; margin-bottom: 10px; background: linear-gradient(to right, #38bdf8, #818cf8); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.subtitle { color: var(--text-muted); margin-bottom: 40px; font-size: 1.2em; }
+.menu-opciones { display: flex; justify-content: center; gap: 20px; margin-bottom: 40px; flex-wrap: wrap;}
+
+/* Tabla Explorador de Salas */
+.explorador-container { margin-top: 40px; }
+.section-title { border-bottom: 2px solid var(--border-panel); padding-bottom: 10px; margin-bottom: 20px; color: #fff;}
+.table-responsive { overflow-x: auto; }
+.tabla-salas { width: 100%; border-collapse: collapse; background: rgba(0, 0, 0, 0.2); border-radius: 8px; overflow: hidden; }
+.tabla-salas th, .tabla-salas td { padding: 15px; border-bottom: 1px solid var(--border-panel); text-align: left; }
+.tabla-salas th { background-color: rgba(0, 0, 0, 0.4); color: var(--text-highlight); font-weight: 600; text-transform: uppercase; font-size: 0.85em; }
+.tabla-salas tr:last-child td { border-bottom: none; }
+.tabla-salas tr:hover { background-color: rgba(255, 255, 255, 0.05); }
+
+/* =========================================
+   2. PANTALLA: LOBBY Y SALA DE JUEGO
+   ========================================= */
+#pantallaLobby { max-width: 1200px; margin: 0 auto; }
+
+/* Header de la Sala */
+.header-sala { padding: 15px 20px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+.sala-info-basica { flex: 1; min-width: 200px; }
+.controles-superior { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; justify-content: center; flex: 1; }
+.grupo-controles-perfil { display: flex; gap: 15px; align-items: flex-end; background: rgba(0, 0, 0, 0.25); padding: 12px 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05); flex-wrap: wrap; }
+.grupo-controles-acciones { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.control-group { display: flex; flex-direction: column; gap: 6px; }
+.input-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Columnas Centrales del Lobby */
+.contenedor-principal { display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+.columna-listas { display: flex; flex-direction: column; gap: 25px; flex: 0 1 600px; width: 100%; min-width: 300px;}
+.columna-herramientas { display: flex; flex-direction: column; gap: 25px; flex: 0 1 350px; width: 100%; }
+
+/* Listas de Usuarios (Jugadores/Espectadores) */
+.caja-lista { padding: 20px; }
+.list-title { margin-top: 0; color: #fff; margin-bottom: 15px; font-size: 1.1em; }
+.host-tag { color: var(--accent-gold); font-size: 12px; font-weight: normal; margin-left: 5px; }
+.lista-usuarios { list-style: none; padding: 0; margin: 0;}
+.lista-usuarios li { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; font-size: 0.95em;}
+.lista-usuarios li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
+.listo-true { color: var(--accent-green); font-weight: 600; font-size: 0.85em; margin-left: 5px;}
+.estado-esperando { color: var(--accent-gold); font-style: italic; font-size: 0.8em; margin-left: 5px; }
+.foto-perfil { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 12px; border: 2px solid var(--border-panel); background: #333;}
+.controles-bot { margin-top: 15px; border-top: 1px solid var(--border-panel); padding-top: 15px; display: flex; gap: 10px; }
+
+/* Panel Config y Chat del Lobby */
+.panel-configuracion { padding: 20px; opacity: 0.5; pointer-events: none; transition: all 0.3s; }
+.panel-configuracion.es-host { opacity: 1; pointer-events: auto; border-color: rgba(59, 130, 246, 0.4); box-shadow: 0 0 15px rgba(59, 130, 246, 0.1); }
+.caja-chat { padding: 20px; display: flex; flex-direction: column; height: 300px;}
+.chat-mensajes { flex: 1; overflow-y: auto; padding-right: 5px; margin-bottom: 15px; font-size: 0.9em; word-wrap: break-word;}
+.chat-mensajes::-webkit-scrollbar { width: 6px; }
+.chat-mensajes::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+.chat-input-area { display: flex; gap: 10px; }
+.foto-chat { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 8px; border: 1px solid #aaa;}
+
+/* =========================================
+   3. PANTALLA: RESULTADOS (FIN DEL JUEGO)
+   ========================================= */
+.foto-ganador-oro { width: 150px; height: 150px; object-fit: cover; border-radius: 50%; border: 4px solid var(--accent-gold); box-shadow: 0 0 20px rgba(250, 204, 21, 0.6); margin: 0 auto 20px auto; display: block; background-color: var(--bg-dark); }
+.title-ganador { font-size: 4em; margin-bottom: 10px; background: linear-gradient(to bottom, #fde047, #b45309); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.3)); }
+.ganador-box { margin-bottom: 30px; }
+.ranking-container { display: inline-block; padding: 30px; min-width: 650px; max-width: 90vw; margin-bottom: 30px; }
+.ranking-lista { font-size: 1.1em; padding: 0; margin: 0; list-style: none;}
+.ranking-lista li { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-panel); display: flex; align-items: center;}
+.ranking-lista li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
+.ranking-lista img { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; border: 2px solid var(--accent-blue); margin: 0 20px; background: rgba(0, 0, 0, 0.3); flex-shrink: 0; }
+.ranking-lista span { font-weight: 600; }
+.caja-analisis { max-width: 600px; margin: 0 auto 40px auto; padding: 30px; text-align: left; }
+.acciones-finales { display: flex; justify-content: center; gap: 20px; }
+
+/* Análisis Desplegable de las Cartas Perdidas */
+details { margin-top: 15px; font-size: 0.9em; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid var(--border-panel); }
+summary { cursor: pointer; font-weight: 600; color: var(--accent-blue); outline: none; margin-bottom: 8px;}
+.analisis-scroll { max-height: 120px; overflow-y: auto; background: rgba(0, 0, 0, 0.3); padding: 10px 15px; border-radius: 6px; margin-top: 10px; border: 1px solid rgba(255,255,255,0.1); text-align: left;}
+.analisis-scroll::-webkit-scrollbar { width: 6px; }
+.analisis-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+.analisis-scroll ul { margin: 5px 0 0 0; padding-left: 20px; color: #e2e8f0; }
+.analisis-scroll li { margin-bottom: 4px !important; border-bottom: none !important; font-size: 0.95em !important; }
+
+/* =========================================
+   4. PANTALLA: CREADOR DE TABLILLAS
+   ========================================= */
+.creador-container { width: 100%; max-width: 1000px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-dark); }
+.creador-header { padding: 15px 20px; border-bottom: 1px solid var(--border-panel); display: flex; justify-content: space-between; align-items: center; }
+.creador-body { display: flex; flex-wrap: wrap; flex: 1; overflow: hidden; }
+
+/* Área Tablilla (Izquierda) */
+.creador-tablilla-area { flex: 1; min-width: 320px; padding: 20px; border-right: 1px solid var(--border-panel); display: flex; flex-direction: column; align-items: center; overflow-y: auto;}
+.creador-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; width: 260px; margin-bottom: 20px; background: #e2e8f0; padding: 10px; border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+.creador-slot { aspect-ratio: 47/73; background: #cbd5e1; border: 2px dashed #94a3b8; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; position: relative; transition: all 0.2s;}
+.creador-slot:hover { border-color: var(--accent-blue); background: #f1f5f9; }
+.creador-slot img { width: 100%; height: 100%; object-fit: cover; }
+.creador-acciones { display: flex; gap: 10px; width: 100%; justify-content: center; flex-wrap: wrap;}
+
+/* Área Catálogo (Derecha) */
+.creador-catalogo-area { flex: 2; min-width: 350px; padding: 20px; overflow-y: auto; max-height: calc(90vh - 65px); }
+.catalogo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; }
+.carta-catalogo { position: relative; aspect-ratio: 47/73; cursor: pointer; border-radius: 6px; overflow: hidden; border: 3px solid transparent; transition: transform 0.2s, filter 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);}
+.carta-catalogo:hover { transform: scale(1.1); }
+.carta-catalogo img { width: 100%; height: 100%; object-fit: cover; }
+.en-tablilla { border: 3px solid var(--accent-green); filter: brightness(0.5); pointer-events: auto; }
+.nombre-carta-catalogo { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(15, 23, 42, 0.85); color: #f8fafc; font-size: 10px; text-align: center; padding: 4px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; backdrop-filter: blur(2px); pointer-events: none; }
+
+/* Responsive del Creador de Tablillas */
+@media (max-width: 768px) {
+    .creador-tablilla-area { border-right: none; border-bottom: 2px solid var(--border-panel); padding-bottom: 20px;}
+    .creador-catalogo-area { max-height: 400px; }
+}

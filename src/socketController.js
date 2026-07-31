@@ -16,7 +16,9 @@ module.exports = function (io, socket) {
 
         for (const id in sala.jugadores) {
             const j = sala.jugadores[id];
-            const info = { id, nombre: j.nombre || "Escribiendo...", enLobby: j.enLobby, foto: j.foto, isBot: j.isBot };
+            let estadoTexto = j.desconectado ? ' <span style="color:#ef4444; font-size:11px; font-weight:bold;">(Desconectado)</span>' : '';
+            
+            const info = { id, nombre: (j.nombre || "Escribiendo...") + estadoTexto, enLobby: j.enLobby, foto: j.foto, isBot: j.isBot };
             
             if (j.rol === 'jugador') {
                 const estaListo = j.tablillaBloqueada !== null;
@@ -46,7 +48,7 @@ module.exports = function (io, socket) {
                 nombreSala: s.nombre, codigo: s.codigo, 
                 anfitrion: s.jugadores[s.anfitrion]?.nombre || 'Esperando...', 
                 jugadores: s.getJugadoresActivos().length,
-                maxJugadores: s.config.maxJugadores || 8 // ENVIAMOS EL LÍMITE REAL A LA VISTA PÚBLICA
+                maxJugadores: s.config.maxJugadores || 8 
             }));
         io.emit('salas_publicas_actualizadas', publicas);
     };
@@ -84,30 +86,51 @@ module.exports = function (io, socket) {
         }
     };
 
-    const manejarSalidaJugador = (socketId) => {
+    const manejarSalidaJugador = (socketId, salidaVoluntaria = false) => {
         for (const nombreSala in partidasActivas) {
             const sala = partidasActivas[nombreSala];
             if (sala.jugadores[socketId]) {
-                const eraAnfitrion = (sala.anfitrion === socketId);
-                sala.removerJugador(socketId);
+                const jugador = sala.jugadores[socketId];
                 
-                const humanosRestantes = Object.keys(sala.jugadores).filter(id => !sala.jugadores[id].isBot);
-                
-                if (humanosRestantes.length === 0) {
-                    detenerTimerInactividad(nombreSala); 
-                    delete partidasActivas[nombreSala]; 
-                    emitirSalasPublicas();
-                } else {
-                    if (eraAnfitrion) {
-                        sala.anfitrion = humanosRestantes[0]; 
-                        io.to(sala.anfitrion).emit('nuevo_anfitrion');
-                        io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: `El anfitrión se fue. El nuevo anfitrión es ${sala.jugadores[sala.anfitrion].nombre}` });
-                    }
-                    if (sala.estado === 'espera' || sala.estado === 'finalizado') {
-                        io.to(nombreSala).emit('actualizar_tablillas', sala.tablillas);
-                        emitirListas(nombreSala);
-                    }
+                if (!salidaVoluntaria && !jugador.isBot && !jugador.desconectado) {
+                    jugador.desconectado = true;
+                    const nombreLimpio = (jugador.nombre || 'Un jugador').replace(/<[^>]*>?/gm, '');
+                    io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: `⚠️ ¡${nombreLimpio} perdió la conexión! Esperando 30s...` });
+                    emitirListas(nombreSala);
+                    
+                    jugador.timerReconexion = setTimeout(() => {
+                        ejecutarSalidaDefinitiva(socketId, nombreSala);
+                    }, 30000); 
+                    return; 
                 }
+                
+                ejecutarSalidaDefinitiva(socketId, nombreSala);
+            }
+        }
+    };
+
+    const ejecutarSalidaDefinitiva = (socketId, nombreSala) => {
+        const sala = partidasActivas[nombreSala];
+        if(!sala || !sala.jugadores[socketId]) return;
+        
+        const eraAnfitrion = (sala.anfitrion === socketId);
+        sala.removerJugador(socketId);
+        
+        const humanosRestantes = Object.keys(sala.jugadores).filter(id => !sala.jugadores[id].isBot);
+        
+        if (humanosRestantes.length === 0) {
+            detenerTimerInactividad(nombreSala); 
+            delete partidasActivas[nombreSala]; 
+            emitirSalasPublicas();
+        } else {
+            if (eraAnfitrion) {
+                sala.anfitrion = humanosRestantes[0]; 
+                io.to(sala.anfitrion).emit('nuevo_anfitrion');
+                io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: `El anfitrión se fue. El nuevo anfitrión es ${sala.jugadores[sala.anfitrion].nombre}` });
+            }
+            if (sala.estado === 'espera' || sala.estado === 'finalizado') {
+                io.to(nombreSala).emit('actualizar_tablillas', sala.tablillas);
+                emitirListas(nombreSala);
             }
         }
     };
@@ -118,7 +141,6 @@ module.exports = function (io, socket) {
         if(sala.intervalo) clearInterval(sala.intervalo); sala.intervalo = null;
         Object.values(sala.jugadores).forEach(j => { if(!j.isBot) j.enLobby = false; });
         
-        // NUEVO: Inyectar el historial de vueltas en el ranking antes de enviarlo
         const rankingFinal = sala.calcularRanking();
         rankingFinal.forEach(r => {
             const jugadorOriginal = Object.values(sala.jugadores).find(j => j.nombre === r.nombre);
@@ -147,7 +169,6 @@ module.exports = function (io, socket) {
         const numHumanos = sala.getHumanos().filter(j => j.rol === 'jugador').length;
         if (sala.votacion.votosSi > (numHumanos - sala.votacion.votosSi)) {
             
-            // NUEVO: Guardar historial de cartas perdidas de esta vuelta antes de limpiar el mazo
             Object.keys(sala.jugadores).forEach(id => {
                 const j = sala.jugadores[id];
                 if (j.rol === 'jugador') {
@@ -295,30 +316,104 @@ module.exports = function (io, socket) {
     };
 
     // --- EVENTOS DE SOCKET.IO ---
-    // --- EVENTOS DE SOCKET.IO ---
     socket.emit('salas_publicas_actualizadas', Object.values(partidasActivas)
         .filter(s => s.esPublica && s.estado === 'espera')
         .map(s => ({
-            nombreSala: s.nombre, 
-            codigo: s.codigo, 
+            nombreSala: s.nombre, codigo: s.codigo, 
             anfitrion: s.jugadores[s.anfitrion]?.nombre || 'Esperando...', 
             jugadores: s.getJugadoresActivos().length,
-            maxJugadores: s.config.maxJugadores || 8 // ¡AQUÍ ESTABA EL PUNTO CIEGO!
+            maxJugadores: s.config.maxJugadores || 8 
         }))
     );
     
-    socket.on('crear_sala', ({ nombreSala, esPublica }) => {
-        if (partidasActivas[nombreSala]) return socket.emit('error_sala', 'El nombre ya existe.');
-
-        const nuevaSala = new Sala(nombreSala, socket.id, esPublica);
-        nuevaSala.jugadores[socket.id] = { nombre: '', foto: null, rol: 'jugador', viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false };
-        partidasActivas[nombreSala] = nuevaSala;
-
-        socket.join(nombreSala);
-        socket.emit('sala_creada', { nombreSala, codigoSala: nuevaSala.codigo, tablillas: nuevaSala.tablillas, esAnfitrion: true, config: nuevaSala.config });
+    // ==========================================
+    // RECONEXIÓN MÁGICA (A PRUEBA DE F5 Y RACE CONDITIONS)
+    // ==========================================
+    socket.on('intento_reconexion', (datos) => {
+        const sala = partidasActivas[datos.nombreSala];
+        if (!sala) return socket.emit('reconexion_fallida');
         
-        iniciarTimerInactividad(nombreSala);
-        emitirListas(nombreSala);
+        // CORRECCIÓN CLAVE: Ya no exigimos que j.desconectado sea TRUE.
+        // Si alguien llega con el mismo Token (F5), se la robamos al socket viejo de inmediato.
+        const entrada = Object.entries(sala.jugadores).find(([id, j]) => j.sessionId === datos.sessionId);
+        
+        if (entrada) {
+            const oldId = entrada[0];
+            const jugador = entrada[1];
+            
+            // Frenamos el contador de la muerte si es que ya había empezado
+            if (jugador.timerReconexion) {
+                clearTimeout(jugador.timerReconexion);
+                jugador.timerReconexion = null;
+            }
+            jugador.desconectado = false;
+            
+            // Si por alguna rareza el ID de socket es el mismo, no hacemos trasplante
+            if (oldId !== socket.id) {
+                // EL TRASPLANTE: Mudamos la sesión al nuevo socket
+                sala.jugadores[socket.id] = sala.jugadores[oldId];
+                delete sala.jugadores[oldId];
+                
+                if(sala.anfitrion === oldId) sala.anfitrion = socket.id;
+                const gIdx = sala.ganadores.indexOf(oldId);
+                if(gIdx !== -1) sala.ganadores[gIdx] = socket.id;
+                
+                sala.tablillas.forEach(t => {
+                    if(t.bloqueadaPor === oldId) t.bloqueadaPor = socket.id;
+                    const idx = t.viendoPor.indexOf(oldId);
+                    if(idx !== -1) t.viendoPor[idx] = socket.id;
+                });
+                
+                if(sala.votacion && sala.votacion.votantes.has(oldId)) {
+                    sala.votacion.votantes.delete(oldId);
+                    sala.votacion.votantes.add(socket.id);
+                }
+            }
+
+            socket.join(datos.nombreSala);
+            
+            // Construir paquete de estado para recuperar el HTML (UI)
+            const infoJugadores = {};
+            for(const id in sala.jugadores) {
+                if(sala.jugadores[id].rol === 'jugador') {
+                    const t = sala.tablillas.find(tab => tab.id === sala.jugadores[id].tablillaBloqueada);
+                    infoJugadores[id] = { nombre: sala.jugadores[id].nombre, foto: sala.jugadores[id].foto, cartas: t ? t.cartas : [], marcas: sala.jugadores[id].marcas };
+                }
+            }
+
+            socket.emit('reconexion_exitosa', {
+                estadoSala: sala.estado,
+                config: sala.config,
+                tablillas: sala.tablillas,
+                rol: jugador.rol,
+                esAnfitrion: sala.anfitrion === socket.id,
+                cartasJugadas: sala.cartasJugadas,
+                misMarcas: jugador.marcas,
+                infoJugadores: infoJugadores,
+                nombreSala: datos.nombreSala,
+                codigoSala: sala.codigo
+            });
+
+            const nombreLimpio = (jugador.nombre || 'Un jugador').replace(/<[^>]*>?/gm, '');
+            io.to(datos.nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: `✅ ¡${nombreLimpio} ha logrado reconectarse!` });
+            emitirListas(datos.nombreSala);
+        } else {
+            socket.emit('reconexion_fallida');
+        }
+    });
+
+    socket.on('crear_sala', (d) => {
+        if (partidasActivas[d.nombreSala]) return socket.emit('error_sala', 'El nombre ya existe.');
+
+        const nuevaSala = new Sala(d.nombreSala, socket.id, d.esPublica);
+        nuevaSala.jugadores[socket.id] = { nombre: '', foto: null, rol: 'jugador', viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false, sessionId: d.sessionId, desconectado: false, timerReconexion: null };
+        partidasActivas[d.nombreSala] = nuevaSala;
+
+        socket.join(d.nombreSala);
+        socket.emit('sala_creada', { nombreSala: d.nombreSala, codigoSala: nuevaSala.codigo, tablillas: nuevaSala.tablillas, esAnfitrion: true, config: nuevaSala.config });
+        
+        iniciarTimerInactividad(d.nombreSala);
+        emitirListas(d.nombreSala);
     });
 
     socket.on('unirse_sala', (datos) => {
@@ -328,19 +423,15 @@ module.exports = function (io, socket) {
         const numJugadores = sala.getJugadoresActivos().length;
         const numEspectadores = Object.values(sala.jugadores).filter(j => j.rol === 'espectador').length;
         let rolFinal = datos.rolElegido;
-        
-        // Límite dinámico (8 por defecto si no lo han configurado)
         const limiteJugadores = sala.config.maxJugadores || 8;
 
         if (sala.config.sinEspectadores && rolFinal === 'espectador') return socket.emit('error_sala', 'SIN ESPECTADORES.');
         if (rolFinal === 'espectador' && numEspectadores >= MAX_ESPECTADORES) return socket.emit('error_sala', 'Límite de espectadores.');
         
-        // Comprobación de Límite de Jugadores Activos
         if (rolFinal === 'jugador' && numJugadores >= limiteJugadores) {
             if (sala.config.sinEspectadores || numEspectadores >= MAX_ESPECTADORES) {
                 return socket.emit('error_sala', `¡ESTA SALA ESTÁ LLENA! El anfitrión ha limitado la partida a ${limiteJugadores} jugadores.`);
             }
-            // NUEVO: En lugar de forzarlo, le enviamos un evento para preguntarle
             return socket.emit('confirmar_espectador', { 
                 nombreSala: datos.nombreSala, 
                 codigoSala: datos.codigoSala,
@@ -351,7 +442,7 @@ module.exports = function (io, socket) {
         socket.join(datos.nombreSala);
 
         if (['jugando', 'votando', 'votando_revolver', 'gracia', 'finalizado'].includes(sala.estado)) {
-            sala.jugadores[socket.id] = { nombre: '', foto: null, rol: 'espectador', viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false };
+            sala.jugadores[socket.id] = { nombre: '', foto: null, rol: 'espectador', viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false, sessionId: datos.sessionId, desconectado: false, timerReconexion: null };
             if(sala.estado !== 'finalizado') {
                 const infoJugadores = {};
                 for(const id in sala.jugadores) {
@@ -366,7 +457,7 @@ module.exports = function (io, socket) {
             return;
         }
 
-        sala.jugadores[socket.id] = { nombre: '', foto: null, rol: rolFinal, viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false };
+        sala.jugadores[socket.id] = { nombre: '', foto: null, rol: rolFinal, viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false, sessionId: datos.sessionId, desconectado: false, timerReconexion: null };
         socket.emit('sala_unida', { nombreSala: datos.nombreSala, tablillas: sala.tablillas, rol: rolFinal, esAnfitrion: false, config: sala.config });
         emitirListas(datos.nombreSala);
     });
@@ -378,7 +469,6 @@ module.exports = function (io, socket) {
             if (s.esPublica && s.estado === 'espera') {
                 const numJ = s.getJugadoresActivos().length;
                 const limiteDinamico = s.config.maxJugadores || 8;
-                // Busca salas que aún no lleguen a su límite personalizado
                 if (numJ < limiteDinamico && numJ > maxPlayers) { maxPlayers = numJ; bestRoom = nombre; }
             }
         }
@@ -419,7 +509,6 @@ module.exports = function (io, socket) {
         if (s && s.anfitrion === socket.id && s.estado === 'espera') { 
             s.config = d.config; 
             io.to(d.nombreSala).emit('config_actualizada', s.config); 
-            // NUEVO: Forzamos la actualización de la UI en tiempo real
             emitirListas(d.nombreSala); 
         }
     });
@@ -573,12 +662,18 @@ module.exports = function (io, socket) {
                 io.to(d.idJugador).emit('expulsado_de_sala'); 
                 io.sockets.sockets.get(d.idJugador)?.leave(d.nombreSala);
             }
-            s.removerJugador(d.idJugador);
-            if (s.estado === 'espera') io.to(d.nombreSala).emit('actualizar_tablillas', s.tablillas); 
-            emitirListas(d.nombreSala);
+            ejecutarSalidaDefinitiva(d.idJugador, d.nombreSala); 
         }
     });
 
-    socket.on('salir_sala', () => { manejarSalidaJugador(socket.id); socket.emit('salida_exitosa'); });
-    socket.on('disconnect', () => { manejarSalidaJugador(socket.id); });
+    // Salida Voluntaria (El botón rojo de salir o el boton de expulsar)
+    socket.on('salir_sala', () => { 
+        manejarSalidaJugador(socket.id, true); 
+        socket.emit('salida_exitosa'); 
+    });
+    
+    // Desconexión Involuntaria (Cierre de App, F5, WiFi perdido)
+    socket.on('disconnect', () => { 
+        manejarSalidaJugador(socket.id, false); 
+    });
 };
