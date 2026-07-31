@@ -175,23 +175,34 @@ export function setupSocketClient(socket, callbacks) {
         ui.mostrarModalError(`La sala fue cerrada por inactividad (${minutos} Minutos).`, () => window.location.reload()); 
     });
     
+    // ==========================================
+    // CORRECCIÓN CHAT: Mostrar burbuja flotante
+    // ==========================================
     socket.on('mensaje_chat', (datos) => {
         ui.pintarMensajeChat(datos); 
-        if (state.juegoEnCurso) {
-            let senderId = null;
-            for (let id in state.estadoJugadores) { if (state.estadoJugadores[id].nombre === datos.nombre) { senderId = id; break; } }
-            if (senderId) {
-                let targetDiv = null;
-                if (senderId === socket.id) targetDiv = document.getElementById('contenedorTablillas'); 
-                else targetDiv = document.getElementById(`tablilla-espectador-${senderId}`); 
-                if (targetDiv) {
-                    const burbuja = document.createElement('div'); burbuja.className = 'burbuja-chat';
-                    const fotoUsuario = state.estadoJugadores[senderId]?.foto;
-                    const imgHTML = fotoUsuario ? `<img src="${fotoUsuario}" class="burbuja-foto">` : '';
-                    burbuja.innerHTML = `<div class="burbuja-chat-contenido">${imgHTML}<span>${datos.mensaje}</span></div>`;
-                    targetDiv.appendChild(burbuja);
-                    setTimeout(() => { if (burbuja.parentNode) burbuja.remove(); }, 5500);
-                }
+        
+        if (state.juegoEnCurso && datos.idJugador) {
+            let senderId = datos.idJugador;
+            let targetDiv = null;
+            
+            // Si el mensaje lo envié yo, pego la burbuja a mi tablilla activa
+            if (senderId === socket.id) {
+                targetDiv = document.querySelector('.bloqueada-mia'); 
+                if(!targetDiv) targetDiv = document.getElementById('contenedorTablillas');
+            } 
+            // Si el mensaje es de otro, lo pego a su tablilla en el carrusel de espectadores
+            else {
+                targetDiv = document.getElementById(`tablilla-espectador-${senderId}`); 
+            }
+            
+            if (targetDiv) {
+                const burbuja = document.createElement('div'); burbuja.className = 'burbuja-chat';
+                const fotoUsuario = datos.foto;
+                const imgHTML = fotoUsuario ? `<img src="${fotoUsuario}" class="burbuja-foto">` : '';
+                burbuja.innerHTML = `<div class="burbuja-chat-contenido">${imgHTML}<span>${datos.mensaje}</span></div>`;
+                targetDiv.appendChild(burbuja);
+                
+                setTimeout(() => { if (burbuja.parentNode) burbuja.remove(); }, 5500);
             }
         }
     });
@@ -308,7 +319,6 @@ export function setupSocketClient(socket, callbacks) {
             document.querySelectorAll('.tablilla').forEach(el => {
                 if(!el.classList.contains('bloqueada-mia') && state.miRol === 'jugador') el.style.display = 'none';
                 else if (state.miRol === 'espectador') el.style.display = 'none'; 
-                // CORRECCIÓN: Eliminamos la línea que borraba la clase 'bloqueada-mia'
             });
             document.getElementById('botonesTablilla').style.display = 'none';
         }

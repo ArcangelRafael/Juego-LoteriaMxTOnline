@@ -164,9 +164,6 @@ module.exports = function (io, socket) {
         }, 1000);
     };
 
-    // ==========================================
-    // REVOLVER MAZO (CON CONTEO)
-    // ==========================================
     const procesarResultadoVotacionRevolver = (nombreSala) => {
         const sala = partidasActivas[nombreSala]; clearInterval(sala.votacion.temporizador);
         const numHumanos = sala.getHumanos().filter(j => j.rol === 'jugador').length;
@@ -190,7 +187,7 @@ module.exports = function (io, socket) {
             io.to(nombreSala).emit('votacion_revolver_cerrada', true); 
             io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: '¡El mazo se ha revuelto!' });
             
-            let tiempoEspera = 3; // Tiempo universal para reiniciar el mazo
+            let tiempoEspera = 3; 
             io.to(nombreSala).emit('actualizar_texto_carta', `¡Mazo revuelto! Iniciando en ${tiempoEspera}s...`);
             
             sala.intervalo = setInterval(() => {
@@ -263,9 +260,6 @@ module.exports = function (io, socket) {
         }
     };
 
-    // ==========================================
-    // REANUDAR PARTIDA DESPUÉS DE VICTORIA (CON CONTEO)
-    // ==========================================
     const procesarResultadoVotacionContinuar = (nombreSala) => {
         const sala = partidasActivas[nombreSala]; clearInterval(sala.votacion.temporizador);
         const numHumanos = sala.getHumanos().filter(j => j.rol === 'jugador').length;
@@ -277,11 +271,9 @@ module.exports = function (io, socket) {
             io.to(nombreSala).emit('votacion_cerrada', true);
             
             if (sala.mazo.length > 0) {
-                // El tiempo de espera será igual al tiempo configurado para marcar (ej: 5000ms = 5s)
                 let tiempoEspera = Math.floor(sala.config.tiempoMarcar / 1000);
                 const ultimaCarta = sala.cartasJugadas[sala.cartasJugadas.length - 1];
                 
-                // Le pedimos al cliente que desbloquee la última carta en la interfaz
                 if (ultimaCarta) {
                     io.to(nombreSala).emit('reactivar_ultima_carta', { 
                         carta: ultimaCarta, 
@@ -291,13 +283,11 @@ module.exports = function (io, socket) {
 
                 io.to(nombreSala).emit('actualizar_texto_carta', `El juego continúa en ${tiempoEspera}s...`);
                 
-                // Conteo regresivo visual
                 sala.intervalo = setInterval(() => {
                     tiempoEspera--;
                     if (tiempoEspera > 0) {
                         io.to(nombreSala).emit('actualizar_texto_carta', `El juego continúa en ${tiempoEspera}s...`);
                     } else {
-                        // Termina el conteo, sacamos la siguiente carta inmediatamente y volvemos a la normalidad
                         clearInterval(sala.intervalo);
                         sacarCarta(nombreSala);
                         sala.intervalo = setInterval(() => sacarCarta(nombreSala), sala.config.velocidadGriton);
@@ -520,10 +510,18 @@ module.exports = function (io, socket) {
         else socket.emit('partida_rapida_crear', "Sala_" + Math.random().toString(36).substr(2, 4).toUpperCase());
     });
 
+    // ==========================================
+    // CORRECCIÓN CHAT: Enviar ID del jugador
+    // ==========================================
     socket.on('enviar_mensaje', (datos) => {
         const sala = partidasActivas[datos.nombreSala];
         if (sala && sala.jugadores[socket.id]) {
-            io.to(datos.nombreSala).emit('mensaje_chat', { nombre: sala.jugadores[socket.id].nombre || "Anónimo", mensaje: datos.mensaje, foto: sala.jugadores[socket.id].foto });
+            io.to(datos.nombreSala).emit('mensaje_chat', { 
+                nombre: sala.jugadores[socket.id].nombre || "Anónimo", 
+                mensaje: datos.mensaje, 
+                foto: sala.jugadores[socket.id].foto,
+                idJugador: socket.id // 🚨 AHORA ENVIAMOS EL ID EXACTO
+            });
         }
     });
 
