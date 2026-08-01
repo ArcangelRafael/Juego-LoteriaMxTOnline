@@ -1,19 +1,16 @@
 // public/js/events.js
 import state from './state.js';
 import * as ui from './ui.js';
+import { guardarSnapshot, restaurarSnapshot } from './physics.js';
 
 export function setupUIEvents(socket) {
     
-    // ==========================================
-    // TRUCO MÁGICO: Bloqueo de zoom dinámico para móviles
-    // ==========================================
     function bloquearZoomMovil() {
         let meta = document.getElementById('anti-zoom-meta');
         if (!meta) {
             meta = document.createElement('meta');
             meta.id = 'anti-zoom-meta';
             meta.name = 'viewport';
-            // 980px es el ancho estándar de escritorio en celulares. Forzamos la escala a 1.
             meta.content = 'width=980, maximum-scale=1.0, user-scalable=no';
             document.head.appendChild(meta);
         }
@@ -21,12 +18,140 @@ export function setupUIEvents(socket) {
 
     function liberarZoomMovil() {
         const meta = document.getElementById('anti-zoom-meta');
-        if (meta) {
-            meta.remove(); // Eliminamos el bloqueo para que vuelvas a poder hacer zoom con los dedos
+        if (meta) meta.remove(); 
+    }
+
+    let currentLobbyAction = '';
+    let isPreviewing = false; 
+
+    function setLobbyAction(action) {
+        const modal = document.getElementById('modalCreador');
+        const isModalOpen = modal && modal.style.display === 'flex';
+
+        if (isModalOpen && action !== 'Creando su propia tablilla') return; 
+        
+        // FIX MAESTRO: Si estamos ensayando, bloquear cualquier otra cosa
+        if (isPreviewing && action !== 'En modo previsualización') return;
+        
+        if (currentLobbyAction !== action) {
+            currentLobbyAction = action;
+            if (state.miSalaActual && !state.juegoEnCurso) {
+                socket.emit('actualizar_estado_lobby', { nombreSala: state.miSalaActual, estado: action });
+            }
         }
     }
 
-    // Eventos Básicos de Navegación
+    document.getElementById('btnPrevisualizar')?.addEventListener('click', () => {
+        guardarSnapshot();
+        isPreviewing = true;
+        setLobbyAction('En modo previsualización');
+        document.dispatchEvent(new Event('iniciar_preview'));
+    });
+    
+    document.getElementById('btnCancelarPreview')?.addEventListener('click', () => {
+        restaurarSnapshot();
+        isPreviewing = false;
+        setLobbyAction('');
+        document.dispatchEvent(new Event('cerrar_preview'));
+    });
+    
+    document.getElementById('btnGuardarPreview')?.addEventListener('click', () => {
+        isPreviewing = false;
+        setLobbyAction('');
+        document.dispatchEvent(new Event('cerrar_preview'));
+    });
+
+    const inputNombre = document.getElementById('nombreTiempoReal');
+    if (inputNombre) {
+        inputNombre.addEventListener('focus', () => setLobbyAction('Escribiendo nombre...'));
+        inputNombre.addEventListener('blur', () => setLobbyAction(''));
+    }
+
+    const selectFicha = document.getElementById('selectFicha');
+    if (selectFicha) {
+        selectFicha.addEventListener('focus', () => setLobbyAction('Seleccionando ficha...'));
+        selectFicha.addEventListener('blur', () => setLobbyAction(''));
+        selectFicha.addEventListener('mouseenter', () => setLobbyAction('Seleccionando ficha...'));
+        selectFicha.addEventListener('mouseleave', () => { if(document.activeElement !== selectFicha) setLobbyAction(''); });
+    }
+
+    const btnFoto = document.querySelector('.btn-subir-foto');
+    if (btnFoto) {
+        btnFoto.addEventListener('click', () => setLobbyAction('Buscando foto...'));
+    }
+    window.addEventListener('focus', () => {
+        if (currentLobbyAction === 'Buscando foto...') setLobbyAction('');
+    });
+
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) {
+        chatInput.addEventListener('focus', () => setLobbyAction('En el chat...'));
+        chatInput.addEventListener('blur', () => setLobbyAction(''));
+    }
+
+    const contTablillas = document.getElementById('contenedorTablillas');
+    if (contTablillas) {
+        contTablillas.addEventListener('mouseover', (e) => {
+            if (e.target.closest('.tablilla')) setLobbyAction('Seleccionando tablilla...');
+        });
+        contTablillas.addEventListener('mouseout', (e) => {
+            const tab = e.target.closest('.tablilla');
+            if (tab && !tab.contains(e.relatedTarget)) {
+                setLobbyAction('');
+            }
+        });
+    }
+
+    const btnAbrirCreador = document.getElementById('btnAbrirCreador');
+    if (btnAbrirCreador) {
+        btnAbrirCreador.addEventListener('pointerdown', () => {
+            setTimeout(() => setLobbyAction('Creando su propia tablilla'), 50);
+        });
+    }
+
+    const btnCerrarCreador = document.getElementById('btnCerrarCreador');
+    if (btnCerrarCreador) {
+        btnCerrarCreador.addEventListener('pointerdown', () => {
+            setTimeout(() => setLobbyAction(''), 50);
+        });
+    }
+
+    const btnGuardarCreador = document.getElementById('btnGuardarCreador');
+    if (btnGuardarCreador) {
+        btnGuardarCreador.addEventListener('pointerdown', () => {
+            setTimeout(() => setLobbyAction(''), 50);
+        });
+    }
+
+    const modalCreador = document.getElementById('modalCreador');
+    if (modalCreador) {
+        modalCreador.addEventListener('pointerdown', (e) => {
+            if (e.target === modalCreador) {
+                modalCreador.style.display = 'none'; 
+                setTimeout(() => setLobbyAction(''), 50);
+            }
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-unirse-tabla')) {
+            const target = e.target.closest('.btn-unirse-tabla');
+            const sala = target.getAttribute('data-sala');
+            const codigo = target.getAttribute('data-codigo');
+            state.miSalaActual = sala;
+            sessionStorage.setItem('loteria_sala_actual', sala); 
+            socket.emit('unirse_sala', { nombreSala: sala, codigoSala: codigo, rolElegido: 'jugador', sessionId: state.sessionId });
+        }
+        if (e.target.closest('.btn-kick')) {
+            const target = e.target.closest('.btn-kick');
+            const id = target.getAttribute('data-id');
+            const nombre = target.getAttribute('data-nombre');
+            ui.mostrarModalExpulsion(nombre, () => {
+                socket.emit('expulsar_jugador', { nombreSala: state.miSalaActual, idJugador: id });
+            });
+        }
+    });
+
     document.getElementById('btnMenuAnfitrion').addEventListener('click', () => { document.getElementById('formAnfitrion').style.display = 'block'; document.getElementById('formUnirse').style.display = 'none'; });
     document.getElementById('btnMenuUnirse').addEventListener('click', () => { document.getElementById('formUnirse').style.display = 'block'; document.getElementById('formAnfitrion').style.display = 'none'; });
 
@@ -72,23 +197,6 @@ export function setupUIEvents(socket) {
 
     document.getElementById('btnPartidaRapida').addEventListener('click', () => { socket.emit('partida_rapida'); });
 
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('btn-unirse-tabla')) {
-            const sala = e.target.getAttribute('data-sala');
-            const codigo = e.target.getAttribute('data-codigo');
-            state.miSalaActual = sala;
-            sessionStorage.setItem('loteria_sala_actual', sala); 
-            socket.emit('unirse_sala', { nombreSala: sala, codigoSala: codigo, rolElegido: 'jugador', sessionId: state.sessionId });
-        }
-        if (e.target.classList.contains('btn-kick')) {
-            const id = e.target.getAttribute('data-id');
-            const nombre = e.target.getAttribute('data-nombre');
-            ui.mostrarModalExpulsion(nombre, () => {
-                socket.emit('expulsar_jugador', { nombreSala: state.miSalaActual, idJugador: id });
-            });
-        }
-    });
-
     document.getElementById('inputFoto').addEventListener('change', (e) => {
         const file = e.target.files[0]; if(!file) return; const reader = new FileReader();
         reader.onload = (event) => { socket.emit('subir_foto', { nombreSala: state.miSalaActual, fotoBase64: event.target.result }); }; reader.readAsDataURL(file);
@@ -108,9 +216,32 @@ export function setupUIEvents(socket) {
         document.getElementById('nombreBotInput').value = "";
     });
 
-    // ==========================================
-    // CHAT IN-GAME (Modificado con Anti-Zoom)
-    // ==========================================
+    document.getElementById('btnAbandonarLobby').addEventListener('click', () => {
+        socket.emit('salir_sala');
+    });
+
+    document.getElementById('btnDestruirLobby').addEventListener('click', () => {
+        ui.mostrarModalDestruirLobby(() => {
+            socket.emit('destruir_sala', state.miSalaActual);
+        });
+    });
+
+    const btnSalirEsp = document.getElementById('btnSalirEspectador');
+    if (btnSalirEsp) {
+        btnSalirEsp.addEventListener('click', () => {
+            socket.emit('salir_sala');
+        });
+    }
+
+    document.getElementById('btnTorneoEspectar')?.addEventListener('click', () => {
+        document.getElementById('modalEliminadoTorneo').style.display = 'none';
+    });
+
+    document.getElementById('btnTorneoSalir')?.addEventListener('click', () => {
+        document.getElementById('modalEliminadoTorneo').style.display = 'none';
+        socket.emit('salir_sala');
+    });
+
     document.getElementById('btnAbrirChatMovil').addEventListener('pointerdown', (e) => {
         e.preventDefault(); e.stopPropagation();
         const cont = document.getElementById('chatIngameContenedor'); 
@@ -123,8 +254,8 @@ export function setupUIEvents(socket) {
             imgEl.style.display = miFoto ? 'block' : 'none';
             cont.style.display = 'flex'; 
             
-            bloquearZoomMovil(); // 1. Bloqueamos zoom
-            input.focus();       // 2. Desplegamos el teclado (el celular ya no hará zoom)
+            bloquearZoomMovil();
+            input.focus();       
             
         } else {
             cont.style.display = 'none';
@@ -132,7 +263,6 @@ export function setupUIEvents(socket) {
         }
     });
 
-    // Cuando el usuario cierra el teclado voluntariamente o quita el foco
     document.getElementById('chatIngameInput').addEventListener('blur', () => {
         liberarZoomMovil(); 
     });
@@ -147,10 +277,9 @@ export function setupUIEvents(socket) {
             input.value = ''; 
         }
         cont.style.display = 'none';
-        liberarZoomMovil(); // Al enviar el mensaje regresamos la vista a la normalidad
+        liberarZoomMovil(); 
     });
     
-    // Abrir con "Enter" en PC
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && state.juegoEnCurso && state.miRol === 'jugador') {
             const cont = document.getElementById('chatIngameContenedor'); 
@@ -193,7 +322,9 @@ export function setupUIEvents(socket) {
         const sE = document.getElementById('checkSinEspectadores').checked;
         const maxJ = parseInt(document.getElementById('selectMaxJugadores').value);
         
-        state.configSala = { velocidadGriton: vG, tiempoMarcar: tM, ayudaNinos: aN, sinEspectadores: sE, maxJugadores: maxJ };
+        const mT = document.getElementById('checkModoTorneo')?.checked || false;
+        
+        state.configSala = { velocidadGriton: vG, tiempoMarcar: tM, ayudaNinos: aN, sinEspectadores: sE, maxJugadores: maxJ, modoTorneo: mT };
         socket.emit('cambiar_config', { nombreSala: state.miSalaActual, config: state.configSala });
     };
 
@@ -201,6 +332,7 @@ export function setupUIEvents(socket) {
     document.getElementById('checkAyudaNinos').addEventListener('change', enviarConfiguracion);
     document.getElementById('checkSinEspectadores').addEventListener('change', enviarConfiguracion);
     document.getElementById('selectMaxJugadores').addEventListener('change', enviarConfiguracion); 
+    document.getElementById('checkModoTorneo')?.addEventListener('change', enviarConfiguracion); 
 
     document.getElementById('btnIniciar').addEventListener('click', () => socket.emit('solicitar_iniciar_juego', state.miSalaActual));
     document.getElementById('btnLoteria').addEventListener('click', () => { document.getElementById('btnLoteria').disabled = true; socket.emit('cantar_loteria', state.miSalaActual); });

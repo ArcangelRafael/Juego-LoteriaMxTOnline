@@ -1,7 +1,40 @@
 // public/js/physics.js
 
-export function setupPhysics() {
+// NUEVO: Variables para la Máquina del Tiempo de la Previsualización
+let snapshotLayout = null;
+
+export function guardarSnapshot() {
+    const contenedorTabs = document.getElementById('contenedorTablillas');
+    const zonaGriton = document.querySelector('.zona-griton');
+    snapshotLayout = {
+        tabScaleX: contenedorTabs.style.getPropertyValue('--escala-x') || '',
+        tabScaleY: contenedorTabs.style.getPropertyValue('--escala-y') || '',
+        tabOffsetX: contenedorTabs.style.getPropertyValue('--offset-x') || '',
+        tabOffsetY: contenedorTabs.style.getPropertyValue('--offset-y') || '',
+        gritonX: zonaGriton ? zonaGriton.style.getPropertyValue('--griton-x') : '',
+        gritonY: zonaGriton ? zonaGriton.style.getPropertyValue('--griton-y') : ''
+    };
+}
+
+export function restaurarSnapshot() {
+    if (!snapshotLayout) return;
+    const contenedorTabs = document.getElementById('contenedorTablillas');
+    const zonaGriton = document.querySelector('.zona-griton');
+
+    contenedorTabs.style.setProperty('--escala-x', snapshotLayout.tabScaleX);
+    contenedorTabs.style.setProperty('--escala-y', snapshotLayout.tabScaleY);
+    contenedorTabs.style.setProperty('--offset-x', snapshotLayout.tabOffsetX);
+    contenedorTabs.style.setProperty('--offset-y', snapshotLayout.tabOffsetY);
+
+    if (zonaGriton) {
+        zonaGriton.style.setProperty('--griton-x', snapshotLayout.gritonX);
+        zonaGriton.style.setProperty('--griton-y', snapshotLayout.gritonY);
+    }
     
+    sessionStorage.setItem('loteria_layout', JSON.stringify(snapshotLayout));
+}
+
+export function setupPhysics() {
     function guardarLayout() {
         const contenedorTabs = document.getElementById('contenedorTablillas');
         const zonaGriton = document.querySelector('.zona-griton');
@@ -48,7 +81,6 @@ export function setupPhysics() {
             startXResizer = e.clientX;
             startYResizer = e.clientY;
             
-            // CORRECCIÓN: Tamaño de escala por defecto arreglado a 1 (100%)
             startScaleX = parseFloat(contenedorTabs.style.getPropertyValue('--escala-x')) || 1;
             startScaleY = parseFloat(contenedorTabs.style.getPropertyValue('--escala-y')) || 1;
             document.body.style.cursor = 'nwse-resize';

@@ -18,7 +18,9 @@ module.exports = function (io, socket) {
             const j = sala.jugadores[id];
             let estadoTexto = j.desconectado ? ' <span style="color:#ef4444; font-size:11px; font-weight:bold;">(Desconectado)</span>' : '';
             
-            const info = { id, nombre: (j.nombre || "Escribiendo...") + estadoTexto, enLobby: j.enLobby, foto: j.foto, isBot: j.isBot };
+            let textoEliminado = j.eliminadoTorneo ? ' <span style="color:#ef4444; font-size:11px;">(Eliminado)</span>' : '';
+            
+            const info = { id, nombre: (j.nombre || "Anónimo") + textoEliminado + estadoTexto, enLobby: j.enLobby, foto: j.foto, isBot: j.isBot, estadoLobby: j.estadoLobby };
             
             if (j.rol === 'jugador') {
                 const estaListo = j.tablillaBloqueada !== null;
@@ -128,7 +130,7 @@ module.exports = function (io, socket) {
                 io.to(sala.anfitrion).emit('nuevo_anfitrion');
                 io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: `El anfitrión se fue. El nuevo anfitrión es ${sala.jugadores[sala.anfitrion].nombre}` });
             }
-            if (sala.estado === 'espera' || sala.estado === 'finalizado') {
+            if (['espera', 'finalizado', 'espera_torneo'].includes(sala.estado)) {
                 io.to(nombreSala).emit('actualizar_tablillas', sala.tablillas);
                 emitirListas(nombreSala);
             }
@@ -149,7 +151,80 @@ module.exports = function (io, socket) {
             }
         });
 
-        io.to(nombreSala).emit('juego_terminado', { ranking: rankingFinal, estadisticas: sala.estadisticas });
+        let esTorneo = sala.config.modoTorneo;
+        let participantesActivos = Object.keys(sala.jugadores).filter(id => sala.jugadores[id].rol === 'jugador');
+        
+        if (esTorneo && participantesActivos.length > 0) {
+            participantesActivos.sort((a, b) => {
+                let posA = rankingFinal.findIndex(r => r.nombre === sala.jugadores[a].nombre);
+                let posB = rankingFinal.findIndex(r => r.nombre === sala.jugadores[b].nombre);
+                if(posA === -1) posA = 999;
+                if(posB === -1) posB = 999;
+                return posA - posB;
+            });
+
+            if (participantesActivos.length >= 2) {
+                let idEliminado = participantesActivos[participantesActivos.length - 1];
+                let jugadorEliminado = sala.jugadores[idEliminado];
+                let lugar = participantesActivos.length;
+
+                jugadorEliminado.rol = 'espectador';
+                jugadorEliminado.eliminadoTorneo = true;
+                jugadorEliminado.tablillaBloqueada = null; 
+                
+                sala.tablillas.forEach(t => {
+                    if(t.bloqueadaPor === idEliminado) t.bloqueadaPor = null;
+                    t.viendoPor = t.viendoPor.filter(vid => vid !== idEliminado);
+                });
+
+                if (!jugadorEliminado.isBot) {
+                    io.to(idEliminado).emit('torneo_eliminado', { lugar: lugar });
+                    io.to(idEliminado).emit('rol_cambiado', 'espectador');
+                }
+
+                if (participantesActivos.length === 2) {
+                    let idGanador = participantesActivos[0]; 
+                    sala.estado = 'finalizado'; 
+                    sala.config.modoTorneo = false; 
+                    io.to(nombreSala).emit('juego_terminado', { 
+                        ranking: rankingFinal, 
+                        estadisticas: sala.estadisticas, 
+                        torneoFinal: true, 
+                        ganador: sala.jugadores[idGanador] 
+                    });
+                } else {
+                    sala.estado = 'espera_torneo';
+                    io.to(nombreSala).emit('juego_terminado', { 
+                        ranking: rankingFinal, 
+                        estadisticas: sala.estadisticas, 
+                        torneo: true, 
+                        tiempo: 30, 
+                        eliminado: { nombre: jugadorEliminado.nombre, foto: jugadorEliminado.foto } 
+                    });
+
+                    sala.timerTorneo = 30;
+                    if(sala.intervalo) clearInterval(sala.intervalo);
+                    sala.intervalo = setInterval(() => {
+                        sala.timerTorneo--;
+                        io.to(nombreSala).emit('torneo_tick', sala.timerTorneo);
+                        if(sala.timerTorneo <= 0) {
+                            clearInterval(sala.intervalo);
+                            Object.values(sala.jugadores).forEach(j => {
+                                j.marcas = [];
+                                if(j.historialPerdidas) delete j.historialPerdidas;
+                                if(j.perdidas) delete j.perdidas;
+                            });
+                            iniciarJuegoReal(nombreSala);
+                        }
+                    }, 1000);
+                }
+            } else {
+                sala.config.modoTorneo = false;
+                io.to(nombreSala).emit('juego_terminado', { ranking: rankingFinal, estadisticas: sala.estadisticas, torneoFinal: true, ganador: sala.jugadores[participantesActivos[0]] });
+            }
+        } else {
+            io.to(nombreSala).emit('juego_terminado', { ranking: rankingFinal, estadisticas: sala.estadisticas });
+        }
         emitirListas(nombreSala); 
     };
 
@@ -157,6 +232,13 @@ module.exports = function (io, socket) {
         const sala = partidasActivas[nombreSala];
         sala.estado = 'votando_revolver';
         sala.votacion = { votosSi: 0, votantes: new Set(), temporizador: null, tiempoRestante: TIEMPO_VOTACION_SEC };
+        
+        const numHumanos = sala.getHumanos().filter(j => j.rol === 'jugador').length;
+        if (numHumanos === 0) {
+            procesarResultadoVotacionRevolver(nombreSala, true);
+            return;
+        }
+
         io.to(nombreSala).emit('iniciar_votacion_revolver', { tiempo: TIEMPO_VOTACION_SEC });
         sala.votacion.temporizador = setInterval(() => {
             sala.votacion.tiempoRestante--; io.to(nombreSala).emit('tick_votacion_revolver', sala.votacion.tiempoRestante);
@@ -164,11 +246,11 @@ module.exports = function (io, socket) {
         }, 1000);
     };
 
-    const procesarResultadoVotacionRevolver = (nombreSala) => {
+    const procesarResultadoVotacionRevolver = (nombreSala, overrideForce = false) => {
         const sala = partidasActivas[nombreSala]; clearInterval(sala.votacion.temporizador);
         const numHumanos = sala.getHumanos().filter(j => j.rol === 'jugador').length;
-        if (sala.votacion.votosSi > (numHumanos - sala.votacion.votosSi)) {
-            
+        
+        if (overrideForce || sala.votacion.votosSi > (numHumanos - sala.votacion.votosSi)) {
             Object.keys(sala.jugadores).forEach(id => {
                 const j = sala.jugadores[id];
                 if (j.rol === 'jugador') {
@@ -260,16 +342,27 @@ module.exports = function (io, socket) {
         }
     };
 
-    const procesarResultadoVotacionContinuar = (nombreSala) => {
+    const procesarResultadoVotacionContinuar = (nombreSala, overrideForce = false) => {
         const sala = partidasActivas[nombreSala]; clearInterval(sala.votacion.temporizador);
         const numHumanos = sala.getHumanos().filter(j => j.rol === 'jugador').length;
         const votosNo = numHumanos - sala.votacion.votosSi;
-        let continua = sala.votacion.votosSi > votosNo ? true : (sala.votacion.votosSi === votosNo ? sala.votacion.votoAnfitrion : false);
+        let continua = overrideForce || (sala.votacion.votosSi > votosNo ? true : (sala.votacion.votosSi === votosNo ? sala.votacion.votoAnfitrion : false));
 
         if (continua) {
             sala.estado = 'jugando'; 
             io.to(nombreSala).emit('votacion_cerrada', true);
             
+            setTimeout(() => {
+                if (partidasActivas[nombreSala] && partidasActivas[nombreSala].estado === 'jugando') {
+                    Object.keys(partidasActivas[nombreSala].jugadores).forEach(id => {
+                        const j = partidasActivas[nombreSala].jugadores[id];
+                        if (j.isBot && j.rol === 'jugador' && j.marcas.length >= 16 && !partidasActivas[nombreSala].ganadores.includes(id)) {
+                            procesarVictoriaGlobal(nombreSala, id);
+                        }
+                    });
+                }
+            }, 500);
+
             if (sala.mazo.length > 0) {
                 let tiempoEspera = Math.floor(sala.config.tiempoMarcar / 1000);
                 const ultimaCarta = sala.cartasJugadas[sala.cartasJugadas.length - 1];
@@ -312,13 +405,23 @@ module.exports = function (io, socket) {
         
         if (posicion > 0) {
             if (posicion === 1) {
-                clearInterval(sala.intervalo); sala.estado = 'votando';
-                sala.votacion = { votosSi: 0, votosNo: 0, votantes: new Set(), tiempoRestante: TIEMPO_VOTACION_SEC, votoAnfitrion: false };
-                io.to(nombreSala).emit('iniciar_votacion', { nombre: jugador.nombre, foto: jugador.foto, tiempo: TIEMPO_VOTACION_SEC });
-                sala.votacion.temporizador = setInterval(() => {
-                    sala.votacion.tiempoRestante--; io.to(nombreSala).emit('tick_votacion', sala.votacion.tiempoRestante);
-                    if (sala.votacion.tiempoRestante <= 0) procesarResultadoVotacionContinuar(nombreSala);
-                }, 1000);
+                clearInterval(sala.intervalo); 
+                
+                const numHumanosJugadores = sala.getHumanos().filter(j => j.rol === 'jugador').length;
+                
+                if (numHumanosJugadores === 0) {
+                    io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: `¡${jugador.nombre} es el #${posicion}!` });
+                    io.to(nombreSala).emit('nuevo_ganador_notificacion', { nombre: jugador.nombre, posicion: posicion });
+                    finalizarPartidaVisual(nombreSala);
+                } else {
+                    sala.estado = 'votando';
+                    sala.votacion = { votosSi: 0, votosNo: 0, votantes: new Set(), tiempoRestante: TIEMPO_VOTACION_SEC, votoAnfitrion: false };
+                    io.to(nombreSala).emit('iniciar_votacion', { nombre: jugador.nombre, foto: jugador.foto, tiempo: TIEMPO_VOTACION_SEC });
+                    sala.votacion.temporizador = setInterval(() => {
+                        sala.votacion.tiempoRestante--; io.to(nombreSala).emit('tick_votacion', sala.votacion.tiempoRestante);
+                        if (sala.votacion.tiempoRestante <= 0) procesarResultadoVotacionContinuar(nombreSala);
+                    }, 1000);
+                }
             } else {
                 io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: `¡${jugador.nombre} es el #${posicion}!` });
                 io.to(nombreSala).emit('nuevo_ganador_notificacion', { nombre: jugador.nombre, posicion: posicion });
@@ -334,19 +437,25 @@ module.exports = function (io, socket) {
         sala.esPublica = false; 
         emitirSalasPublicas();
         
+        sala.ganadores = [];
+        sala.cartasJugadas = [];
+        if(sala.intervalo) clearInterval(sala.intervalo);
+        
         sala.prepararJuego();
         
         const infoJugadores = {};
         for(const id in sala.jugadores) {
             if(sala.jugadores[id].rol === 'jugador') {
+                sala.jugadores[id].estadoLobby = '';
                 const tablilla = sala.tablillas.find(t => t.id === sala.jugadores[id].tablillaBloqueada);
-                infoJugadores[id] = { nombre: sala.jugadores[id].nombre, foto: sala.jugadores[id].foto, cartas: tablilla ? tablilla.cartas : [], marcas: [] };
+                infoJugadores[id] = { nombre: sala.jugadores[id].nombre, foto: sala.jugadores[id].foto, rol: 'jugador', cartas: tablilla ? tablilla.cartas : [], marcas: [] };
             }
         }
         io.to(nombreSala).emit('juego_iniciado', infoJugadores);
         io.to(nombreSala).emit('mensaje_chat', { nombre: 'SISTEMA', mensaje: '¡La partida va a comenzar!' });
 
-        let tiempoPrep = 10;
+        // FIX MAESTRO: Damos 15 segundos exactos para la Obertura y la Mezcla
+        let tiempoPrep = 15;
         io.to(nombreSala).emit('actualizar_texto_carta', `¡CORRE Y SE VA CON... ${tiempoPrep}`);
         sala.intervalo = setInterval(() => {
             tiempoPrep--;
@@ -358,7 +467,6 @@ module.exports = function (io, socket) {
         }, 1000);
     };
 
-    // --- EVENTOS DE SOCKET.IO ---
     socket.emit('salas_publicas_actualizadas', Object.values(partidasActivas)
         .filter(s => s.esPublica && s.estado === 'espera')
         .map(s => ({
@@ -369,6 +477,30 @@ module.exports = function (io, socket) {
         }))
     );
     
+    socket.on('actualizar_estado_lobby', (datos) => {
+        const sala = partidasActivas[datos.nombreSala];
+        if (sala && sala.jugadores[socket.id] && sala.estado === 'espera') {
+            sala.jugadores[socket.id].estadoLobby = datos.estado;
+            emitirListas(datos.nombreSala);
+        }
+    });
+
+    socket.on('destruir_sala', (nombreSala) => {
+        const sala = partidasActivas[nombreSala];
+        if (sala && sala.anfitrion === socket.id) {
+            io.to(nombreSala).emit('sala_destruida_por_anfitrion');
+            
+            detenerTimerInactividad(nombreSala);
+            if (sala.intervalo) clearInterval(sala.intervalo);
+            
+            setTimeout(() => {
+                io.in(nombreSala).socketsLeave(nombreSala);
+                delete partidasActivas[nombreSala];
+                emitirSalasPublicas();
+            }, 500);
+        }
+    });
+
     socket.on('intento_reconexion', (datos) => {
         const sala = partidasActivas[datos.nombreSala];
         if (!sala) return socket.emit('reconexion_fallida');
@@ -384,6 +516,16 @@ module.exports = function (io, socket) {
                 jugador.timerReconexion = null;
             }
             jugador.desconectado = false;
+            
+            if (['espera', 'finalizado', 'espera_torneo'].includes(sala.estado)) {
+                jugador.enLobby = true;
+                jugador.estadoLobby = ''; 
+                if (sala.estado === 'finalizado') {
+                    jugador.tablillaBloqueada = null;
+                    jugador.viendoTablilla = null;
+                    jugador.marcas = [];
+                }
+            }
             
             if (oldId !== socket.id) {
                 sala.jugadores[socket.id] = sala.jugadores[oldId];
@@ -411,7 +553,7 @@ module.exports = function (io, socket) {
             for(const id in sala.jugadores) {
                 if(sala.jugadores[id].rol === 'jugador') {
                     const t = sala.tablillas.find(tab => tab.id === sala.jugadores[id].tablillaBloqueada);
-                    infoJugadores[id] = { nombre: sala.jugadores[id].nombre, foto: sala.jugadores[id].foto, cartas: t ? t.cartas : [], marcas: sala.jugadores[id].marcas };
+                    infoJugadores[id] = { nombre: sala.jugadores[id].nombre, foto: sala.jugadores[id].foto, rol: 'jugador', cartas: t ? t.cartas : [], marcas: sala.jugadores[id].marcas };
                 }
             }
 
@@ -440,7 +582,7 @@ module.exports = function (io, socket) {
         if (partidasActivas[d.nombreSala]) return socket.emit('error_sala', 'El nombre ya existe.');
 
         const nuevaSala = new Sala(d.nombreSala, socket.id, d.esPublica);
-        nuevaSala.jugadores[socket.id] = { nombre: '', foto: null, rol: 'jugador', viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false, sessionId: d.sessionId, desconectado: false, timerReconexion: null };
+        nuevaSala.jugadores[socket.id] = { nombre: '', foto: null, rol: 'jugador', viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false, sessionId: d.sessionId, desconectado: false, timerReconexion: null, estadoLobby: '', eliminadoTorneo: false };
         partidasActivas[d.nombreSala] = nuevaSala;
 
         socket.join(d.nombreSala);
@@ -475,14 +617,18 @@ module.exports = function (io, socket) {
 
         socket.join(datos.nombreSala);
 
-        if (['jugando', 'votando', 'votando_revolver', 'gracia', 'finalizado'].includes(sala.estado)) {
-            sala.jugadores[socket.id] = { nombre: '', foto: null, rol: 'espectador', viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false, sessionId: datos.sessionId, desconectado: false, timerReconexion: null };
+        if (['jugando', 'votando', 'votando_revolver', 'gracia', 'finalizado', 'espera_torneo'].includes(sala.estado)) {
+            if (sala.config.sinEspectadores) {
+                return socket.emit('error_sala', 'La partida ya inició y esta sala no admite espectadores.');
+            }
+            
+            sala.jugadores[socket.id] = { nombre: '', foto: null, rol: 'espectador', viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false, sessionId: datos.sessionId, desconectado: false, timerReconexion: null, estadoLobby: '', eliminadoTorneo: false };
             if(sala.estado !== 'finalizado') {
                 const infoJugadores = {};
                 for(const id in sala.jugadores) {
                     if(sala.jugadores[id].rol === 'jugador') {
                         const t = sala.tablillas.find(tab => tab.id === sala.jugadores[id].tablillaBloqueada);
-                        infoJugadores[id] = { nombre: sala.jugadores[id].nombre, foto: sala.jugadores[id].foto, cartas: t ? t.cartas : [], marcas: sala.jugadores[id].marcas };
+                        infoJugadores[id] = { nombre: sala.jugadores[id].nombre, foto: sala.jugadores[id].foto, rol: 'jugador', cartas: t ? t.cartas : [], marcas: sala.jugadores[id].marcas };
                     }
                 }
                 socket.emit('unido_como_espectador', { cartasJugadas: sala.cartasJugadas, infoJugadores, config: sala.config });
@@ -491,7 +637,7 @@ module.exports = function (io, socket) {
             return;
         }
 
-        sala.jugadores[socket.id] = { nombre: '', foto: null, rol: rolFinal, viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false, sessionId: datos.sessionId, desconectado: false, timerReconexion: null };
+        sala.jugadores[socket.id] = { nombre: '', foto: null, rol: rolFinal, viendoTablilla: null, tablillaBloqueada: null, marcas: [], enLobby: true, isBot: false, sessionId: datos.sessionId, desconectado: false, timerReconexion: null, estadoLobby: '', eliminadoTorneo: false };
         socket.emit('sala_unida', { nombreSala: datos.nombreSala, tablillas: sala.tablillas, rol: rolFinal, esAnfitrion: false, config: sala.config });
         emitirListas(datos.nombreSala);
     });
@@ -510,9 +656,6 @@ module.exports = function (io, socket) {
         else socket.emit('partida_rapida_crear', "Sala_" + Math.random().toString(36).substr(2, 4).toUpperCase());
     });
 
-    // ==========================================
-    // CORRECCIÓN CHAT: Enviar ID del jugador
-    // ==========================================
     socket.on('enviar_mensaje', (datos) => {
         const sala = partidasActivas[datos.nombreSala];
         if (sala && sala.jugadores[socket.id]) {
@@ -520,7 +663,7 @@ module.exports = function (io, socket) {
                 nombre: sala.jugadores[socket.id].nombre || "Anónimo", 
                 mensaje: datos.mensaje, 
                 foto: sala.jugadores[socket.id].foto,
-                idJugador: socket.id // 🚨 AHORA ENVIAMOS EL ID EXACTO
+                idJugador: socket.id 
             });
         }
     });
@@ -546,10 +689,26 @@ module.exports = function (io, socket) {
 
     socket.on('escribiendo_nombre', (d) => { const s = partidasActivas[d.nombreSala]; if (s && s.jugadores[socket.id]) { s.jugadores[socket.id].nombre = d.nuevoNombre; emitirListas(d.nombreSala); }});
     socket.on('subir_foto', (d) => { const s = partidasActivas[d.nombreSala]; if (s && s.jugadores[socket.id]) { s.jugadores[socket.id].foto = d.fotoBase64; emitirListas(d.nombreSala); }});
+    
     socket.on('cambiar_config', (d) => { 
         const s = partidasActivas[d.nombreSala]; 
         if (s && s.anfitrion === socket.id && s.estado === 'espera') { 
             s.config = d.config; 
+            if(!s.config.modoTorneo) {
+                Object.values(s.jugadores).forEach(j => { j.eliminadoTorneo = false; });
+            }
+            
+            if (s.config.sinEspectadores) {
+                Object.keys(s.jugadores).forEach(id => {
+                    const j = s.jugadores[id];
+                    if (j.rol === 'espectador' && !j.eliminadoTorneo) {
+                        io.to(id).emit('expulsado_de_sala', "El anfitrión ha deshabilitado los espectadores.");
+                        io.sockets.sockets.get(id)?.leave(d.nombreSala);
+                        ejecutarSalidaDefinitiva(id, d.nombreSala);
+                    }
+                });
+            }
+
             io.to(d.nombreSala).emit('config_actualizada', s.config); 
             emitirListas(d.nombreSala); 
         }
@@ -663,28 +822,52 @@ module.exports = function (io, socket) {
         const sala = partidasActivas[nombreSala]; if(!sala) return;
         const jugador = sala.jugadores[socket.id];
         
+        if (sala.estado === 'espera_torneo') {
+            clearInterval(sala.intervalo);
+            sala.estado = 'espera'; 
+        }
+        
         if (['jugando', 'votando', 'votando_revolver', 'gracia'].includes(sala.estado)) {
             if(jugador) { jugador.rol = 'espectador'; jugador.tablillaBloqueada = null; jugador.viendoTablilla = null; jugador.marcas = []; jugador.enLobby = true; }
             const infoJugadores = {};
             for(const id in sala.jugadores) {
                 if(sala.jugadores[id].rol === 'jugador') {
                     const t = sala.tablillas.find(tab => tab.id === sala.jugadores[id].tablillaBloqueada);
-                    infoJugadores[id] = { nombre: sala.jugadores[id].nombre, foto: sala.jugadores[id].foto, cartas: t ? t.cartas : [], marcas: sala.jugadores[id].marcas };
+                    infoJugadores[id] = { nombre: sala.jugadores[id].nombre, foto: sala.jugadores[id].foto, rol: 'jugador', cartas: t ? t.cartas : [], marcas: sala.jugadores[id].marcas };
                 }
             }
             socket.emit('unido_como_espectador', { cartasJugadas: sala.cartasJugadas, infoJugadores, config: sala.config });
             emitirListas(nombreSala); return;
         }
 
-        if(jugador) { jugador.tablillaBloqueada = null; jugador.viendoTablilla = null; jugador.marcas = []; jugador.enLobby = true; }
+        if(jugador) { 
+            sala.tablillas.forEach(t => {
+                if (t.bloqueadaPor === socket.id) t.bloqueadaPor = null;
+                t.viendoPor = t.viendoPor.filter(id => id !== socket.id);
+            });
+            jugador.tablillaBloqueada = null; 
+            jugador.viendoTablilla = null; 
+            jugador.marcas = []; 
+            jugador.enLobby = true;
+            jugador.estadoLobby = ''; 
+        }
         
-        if(sala.estado === 'finalizado') {
+        if(sala.estado === 'finalizado' || sala.estado === 'espera') {
             sala.estado = 'espera'; 
             sala.esPublica = sala.fueCreadaPublica; 
             iniciarTimerInactividad(nombreSala);
             
             sala.tablillas.forEach(t => { t.viendoPor = []; t.bloqueadaPor = null; });
-            Object.keys(sala.jugadores).forEach(id => { const j = sala.jugadores[id]; j.marcas = []; j.tablillaBloqueada = null; });
+            Object.keys(sala.jugadores).forEach(id => { 
+                const j = sala.jugadores[id]; 
+                j.marcas = []; 
+                j.tablillaBloqueada = null; 
+                j.estadoLobby = '';
+                if (j.eliminadoTorneo) {
+                    j.eliminadoTorneo = false;
+                    j.rol = 'jugador';
+                }
+            });
 
             Object.keys(sala.jugadores).forEach(id => {
                 const j = sala.jugadores[id];
@@ -694,14 +877,16 @@ module.exports = function (io, socket) {
                 }
             });
         }
-        socket.emit('regreso_al_lobby_exitoso'); io.to(nombreSala).emit('actualizar_tablillas', sala.tablillas); emitirListas(nombreSala);
+        socket.emit('regreso_al_lobby_exitoso'); 
+        io.to(nombreSala).emit('actualizar_tablillas', sala.tablillas); 
+        emitirListas(nombreSala);
     });
 
     socket.on('expulsar_jugador', (d) => {
         const s = partidasActivas[d.nombreSala];
         if (s && s.anfitrion === socket.id && s.jugadores[d.idJugador]) {
             if(!s.jugadores[d.idJugador].isBot) {
-                io.to(d.idJugador).emit('expulsado_de_sala'); 
+                io.to(d.idJugador).emit('expulsado_de_sala', 'Has sido expulsado por el anfitrión.'); 
                 io.sockets.sockets.get(d.idJugador)?.leave(d.nombreSala);
             }
             ejecutarSalidaDefinitiva(d.idJugador, d.nombreSala); 

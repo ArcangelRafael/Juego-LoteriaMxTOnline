@@ -90,3 +90,40 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
 .custom-bmc-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5); color: white; }
 .feedback-link { font-size: 12px; color: #94a3b8; text-decoration: none; transition: color 0.2s; border-bottom: 1px dashed #94a3b8; }
 .feedback-link:hover { color: #f8fafc; border-bottom: 1px dashed #f8fafc; }
+
+/* GLOBOS DE TEXTO TUTORIAL DINÁMICOS */
+.tutorial-balloon {
+    position: fixed; 
+    background: rgba(15, 23, 42, 0.95);
+    border: 2px solid #38bdf8;
+    color: #f8fafc;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    z-index: 100000;
+    width: 220px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    text-align: center;
+    line-height: 1.5;
+    font-weight: 600;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: top 0.1s linear, left 0.1s linear; 
+}
+.tutorial-balloon::after {
+    content: ''; position: absolute; width: 0; height: 0; border-style: solid;
+}
+.tutorial-balloon.top::after {
+    top: 100%; left: 50%; margin-left: -8px; border-width: 8px 8px 0; border-color: #38bdf8 transparent transparent transparent;
+}
+.tutorial-balloon.bottom::after {
+    bottom: 100%; left: 50%; margin-left: -8px; border-width: 0 8px 8px; border-color: transparent transparent #38bdf8 transparent;
+}
+.btn-ok-tutorial {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white; border: none; padding: 6px 20px; border-radius: 6px; font-weight: 800; cursor: pointer; font-size: 12px; font-family: 'Montserrat', sans-serif;
+}
+.btn-ok-tutorial:hover { background: #059669; transform: scale(1.05); }

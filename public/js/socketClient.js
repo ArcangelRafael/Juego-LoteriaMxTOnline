@@ -2,6 +2,7 @@
 import state from './state.js';
 import { CARTAS_LOTERIA } from './cartas.js';
 import * as ui from './ui.js';
+import { reproducirAnimacionMezcla } from './mezcla.js';
 
 const TEXTO_LOBBY = `
     <div style="display:flex; flex-direction:column; align-items:center; gap: 10px;">
@@ -34,10 +35,13 @@ export function setupSocketClient(socket, callbacks) {
 
     socket.on('reconexion_exitosa', (datos) => {
         state.socketId = socket.id;
+        state.tablillasActuales = datos.tablillas;
+        
         document.getElementById('modalReconexion').style.display = 'none';
 
         const panelEsp = document.getElementById('panelEspectadorUI'); if(panelEsp) document.body.appendChild(panelEsp);
         const btnChat = document.getElementById('btnAbrirChatMovil'); if(btnChat) document.body.appendChild(btnChat);
+        const btnLoteria = document.getElementById('btnLoteria'); if(btnLoteria) document.body.appendChild(btnLoteria);
 
         state.miSalaActual = datos.nombreSala;
         state.miRol = datos.rol;
@@ -50,6 +54,9 @@ export function setupSocketClient(socket, callbacks) {
         document.getElementById('modalAFK').style.display = 'none';
         document.getElementById('modalVotacion').style.display = 'none';
         document.getElementById('modalSinCartas').style.display = 'none';
+        
+        const modalTorneo = document.getElementById('modalEliminadoTorneo');
+        if (modalTorneo) modalTorneo.style.display = 'none';
 
         document.getElementById('pantallaMenu').classList.remove('activa');
         document.getElementById('pantallaResultados').classList.remove('activa');
@@ -76,9 +83,22 @@ export function setupSocketClient(socket, callbacks) {
             document.getElementById('controlesBot').style.display = 'block';
             const btnCreador = document.getElementById('contenedorBtnCreador');
             if (btnCreador) btnCreador.style.display = 'block';
+            
+            document.getElementById('btnDestruirLobby').style.display = 'inline-block';
+            document.getElementById('btnAbandonarLobby').style.display = 'none';
+        } else {
+            document.getElementById('btnDestruirLobby').style.display = 'none';
+            document.getElementById('btnAbandonarLobby').style.display = 'inline-block';
         }
 
         if (['jugando', 'gracia', 'votando', 'votando_revolver'].includes(datos.estadoSala)) {
+            
+            const footer = document.querySelector('.app-footer');
+            if (footer) {
+                footer.classList.remove('footer-delay');
+                footer.classList.add('footer-oculto');
+            }
+
             state.juegoEnCurso = true;
             ui.prepararInterfazJuego(state, construirPanelEspectadorCb);
             
@@ -134,16 +154,55 @@ export function setupSocketClient(socket, callbacks) {
                     const contenedorTabs = document.getElementById('contenedorTablillas');
                     const zonaGriton = document.querySelector('.zona-griton');
 
-                    if (l.tabScaleX) contenedorTabs.style.setProperty('--escala-x', l.tabScaleX);
-                    if (l.tabScaleY) contenedorTabs.style.setProperty('--escala-y', l.tabScaleY);
-                    if (l.tabOffsetX) contenedorTabs.style.setProperty('--offset-x', l.tabOffsetX);
-                    if (l.tabOffsetY) contenedorTabs.style.setProperty('--offset-y', l.tabOffsetY);
+                    if (l.tabScaleX) contenedorTabs?.style.setProperty('--escala-x', l.tabScaleX);
+                    if (l.tabScaleY) contenedorTabs?.style.setProperty('--escala-y', l.tabScaleY);
+                    if (l.tabOffsetX) contenedorTabs?.style.setProperty('--offset-x', l.tabOffsetX);
+                    if (l.tabOffsetY) contenedorTabs?.style.setProperty('--offset-y', l.tabOffsetY);
                     
                     if (zonaGriton) {
                         if (l.gritonX) zonaGriton.style.setProperty('--griton-x', l.gritonX);
                         if (l.gritonY) zonaGriton.style.setProperty('--griton-y', l.gritonY);
                     }
                 } catch (e) { console.error('Error restaurando layout:', e); }
+            }
+        } 
+        else {
+            const nombreTiempoReal = document.getElementById('nombreTiempoReal');
+            if (nombreTiempoReal) nombreTiempoReal.disabled = false;
+            
+            const btnLoteriaRef = document.getElementById('btnLoteria');
+            const zg = document.querySelector('.zona-griton');
+            const cartaActual = document.getElementById('cartaActual');
+
+            if (btnLoteriaRef) {
+                btnLoteriaRef.disabled = true;
+                btnLoteriaRef.style.display = 'none';
+                if (zg && cartaActual) {
+                    zg.insertBefore(btnLoteriaRef, cartaActual);
+                }
+            }
+
+            if(zg) { 
+                zg.style.setProperty('--griton-x', '0px'); 
+                zg.style.setProperty('--griton-y', '0px'); 
+            }
+            
+            const contenedorTabs = document.getElementById('contenedorTablillas');
+            if(contenedorTabs) { 
+                contenedorTabs.style.setProperty('--offset-x', '0px'); 
+                contenedorTabs.style.setProperty('--offset-y', '0px'); 
+            }
+            
+            const contEsp = document.getElementById('contenedorEspectador');
+            if(contEsp) contEsp.innerHTML = '';
+            
+            if(cartaActual) {
+                cartaActual.innerHTML = TEXTO_LOBBY;
+                cartaActual.style.color = "";
+            }
+
+            if (datos.estadoSala === 'finalizado') {
+                socket.emit('volver_lobby', datos.nombreSala);
             }
         }
     });
@@ -157,6 +216,12 @@ export function setupSocketClient(socket, callbacks) {
 
     socket.on('salas_publicas_actualizadas', (salas) => ui.pintarSalasPublicas(salas));
     
+    socket.on('sala_destruida_por_anfitrion', () => {
+        sessionStorage.removeItem('loteria_sala_actual');
+        sessionStorage.removeItem('loteria_layout');
+        ui.mostrarModalError("El anfitrión ha destruido la sala.", () => window.location.reload());
+    });
+
     socket.on('partida_rapida_encontrada', (d) => { 
         state.miSalaActual = d.nombreSala; 
         sessionStorage.setItem('loteria_sala_actual', d.nombreSala);
@@ -175,22 +240,17 @@ export function setupSocketClient(socket, callbacks) {
         ui.mostrarModalError(`La sala fue cerrada por inactividad (${minutos} Minutos).`, () => window.location.reload()); 
     });
     
-    // ==========================================
-    // CORRECCIÓN CHAT: Mostrar burbuja flotante
-    // ==========================================
     socket.on('mensaje_chat', (datos) => {
         ui.pintarMensajeChat(datos); 
         
-        if (state.juegoEnCurso && datos.idJugador) {
+        if (state.juegoEnCurso || state.enPrevisualizacion) {
             let senderId = datos.idJugador;
             let targetDiv = null;
             
-            // Si el mensaje lo envié yo, pego la burbuja a mi tablilla activa
             if (senderId === socket.id) {
                 targetDiv = document.querySelector('.bloqueada-mia'); 
                 if(!targetDiv) targetDiv = document.getElementById('contenedorTablillas');
             } 
-            // Si el mensaje es de otro, lo pego a su tablilla en el carrusel de espectadores
             else {
                 targetDiv = document.getElementById(`tablilla-espectador-${senderId}`); 
             }
@@ -216,10 +276,11 @@ export function setupSocketClient(socket, callbacks) {
         window.location.reload(); 
     });
     
-    socket.on('expulsado_de_sala', () => {
+    socket.on('expulsado_de_sala', (msjEspecial) => {
         sessionStorage.removeItem('loteria_sala_actual');
         sessionStorage.removeItem('loteria_layout');
-        ui.mostrarModalError("Has sido expulsado de la sala.", true);
+        let textoFinal = typeof msjEspecial === 'string' ? msjEspecial : "Has sido expulsado de la sala.";
+        ui.mostrarModalError(textoFinal, () => window.location.reload());
     });
     
     socket.on('error_sala', (msg) => { ui.mostrarModalError(msg); document.getElementById('btnBloquear').style.display = 'none'; document.getElementById('btnDesbloquear').style.display = 'none'; });
@@ -239,18 +300,26 @@ export function setupSocketClient(socket, callbacks) {
     });
 
     socket.on('sala_creada', (d) => { 
-        state.soyAnfitrion = true; state.miRol = 'jugador'; ui.actualizarUIConfig(d.config, state); ui.initLobby(d.nombreSala, d.codigoSala, d.tablillas, renderizarTablillasCallback); 
+        state.soyAnfitrion = true; state.miRol = 'jugador'; state.tablillasActuales = d.tablillas;
+        ui.actualizarUIConfig(d.config, state); ui.initLobby(d.nombreSala, d.codigoSala, d.tablillas, renderizarTablillasCallback); 
         document.getElementById('etiquetaHost').style.display='inline'; document.getElementById('btnIniciar').style.display = 'inline-block'; 
         document.getElementById('panelConfiguracion').classList.add('es-host'); document.getElementById('controlesBot').style.display = 'block';
         const btnCreador = document.getElementById('contenedorBtnCreador'); if (btnCreador) btnCreador.style.display = 'block';
+        
+        document.getElementById('btnDestruirLobby').style.display = 'inline-block';
+        document.getElementById('btnAbandonarLobby').style.display = 'none';
     });
 
     socket.on('sala_unida', (d) => { 
-        state.soyAnfitrion = false; state.miRol = d.rol; ui.actualizarUIConfig(d.config, state); ui.initLobby(d.nombreSala, "Oculto", d.tablillas, renderizarTablillasCallback); 
+        state.soyAnfitrion = false; state.miRol = d.rol; state.tablillasActuales = d.tablillas;
+        ui.actualizarUIConfig(d.config, state); ui.initLobby(d.nombreSala, "Oculto", d.tablillas, renderizarTablillasCallback); 
         document.getElementById('btnCambiarRol').textContent = state.miRol === 'jugador' ? 'Cambiar a Espectador' : 'Cambiar a Jugador';
         const cont = document.getElementById('contenedorTablillas');
         if (state.miRol === 'espectador') { cont.style.opacity = '0.5'; cont.style.pointerEvents = 'none'; } else { cont.style.opacity = '1'; cont.style.pointerEvents = 'auto'; }
         const btnCreador = document.getElementById('contenedorBtnCreador'); if (btnCreador) btnCreador.style.display = (d.rol === 'jugador') ? 'block' : 'none';
+        
+        document.getElementById('btnDestruirLobby').style.display = 'none';
+        document.getElementById('btnAbandonarLobby').style.display = 'inline-block';
     });
 
     socket.on('unido_como_espectador', (d) => { 
@@ -259,6 +328,9 @@ export function setupSocketClient(socket, callbacks) {
         state.miRol = 'espectador'; state.soyAnfitrion = false; ui.actualizarUIConfig(d.config, state); state.estadoJugadores = d.infoJugadores; 
         ui.initLobby(state.miSalaActual, "Espectador", [], renderizarTablillasCallback); 
         ui.prepararInterfazJuego(state, construirPanelEspectadorCb); 
+        
+        document.getElementById('btnDestruirLobby').style.display = 'none';
+        document.getElementById('btnAbandonarLobby').style.display = 'inline-block';
     });
 
     socket.on('rol_cambiado', (r) => { 
@@ -269,9 +341,36 @@ export function setupSocketClient(socket, callbacks) {
         if (state.configSala.sinEspectadores) document.getElementById('btnCambiarRol').style.display = 'none';
         document.getElementById('botonesTablilla').style.display = 'none'; 
         const btnCreador = document.getElementById('contenedorBtnCreador'); if (btnCreador) btnCreador.style.display = (state.miRol === 'jugador') ? 'block' : 'none';
+        
+        const btnSalirEsp = document.getElementById('btnSalirEspectador');
+        if (btnSalirEsp && state.juegoEnCurso) {
+            btnSalirEsp.style.display = (state.miRol === 'espectador') ? 'inline-block' : 'none';
+        }
     });
 
-    socket.on('actualizar_listas', (listas) => ui.actualizarListas(listas, state));
+    socket.on('actualizar_listas', (listas) => {
+        if (!state.juegoEnCurso) {
+            const syncJugadores = {};
+            listas.jugadores.forEach(j => {
+                const existing = state.estadoJugadores[j.id] || { cartas: [], marcas: [] };
+                const cleanName = j.nombre.split('<')[0].trim() || 'Anónimo';
+                syncJugadores[j.id] = {
+                    nombre: cleanName,
+                    foto: j.foto,
+                    rol: 'jugador',
+                    cartas: existing.cartas,
+                    marcas: existing.marcas
+                };
+            });
+            state.estadoJugadores = syncJugadores;
+        }
+
+        ui.actualizarListas(listas, state);
+        if (state.enPrevisualizacion || state.juegoEnCurso) {
+            callbacks.construirPanelEspectadorCb();
+        }
+    });
+    
     socket.on('estado_boton_iniciar', (data) => { 
         if (state.soyAnfitrion && !state.juegoEnCurso) { 
             const b = document.getElementById('btnIniciar'); 
@@ -296,11 +395,26 @@ export function setupSocketClient(socket, callbacks) {
     socket.on('nuevo_anfitrion', () => {
         state.soyAnfitrion = true; document.getElementById('etiquetaHost').style.display = 'inline'; 
         if(!state.juegoEnCurso) { document.getElementById('btnIniciar').style.display = 'inline-block'; document.getElementById('panelConfiguracion').classList.add('es-host'); document.getElementById('controlesBot').style.display = 'block'; }
+        
+        document.getElementById('btnDestruirLobby').style.display = 'inline-block';
+        document.getElementById('btnAbandonarLobby').style.display = 'none';
     });
 
     socket.on('actualizar_tablillas', (t) => { 
+        state.tablillasActuales = t; 
+
+        const panelEsp = document.getElementById('panelEspectadorUI'); 
+        if(panelEsp) document.body.appendChild(panelEsp);
+        
+        const btnChat = document.getElementById('btnAbrirChatMovil'); 
+        if(btnChat) document.body.appendChild(btnChat);
+        
+        const btnLoteria = document.getElementById('btnLoteria'); 
+        if(btnLoteria) document.body.appendChild(btnLoteria);
+
         renderizarTablillasCallback(t); 
-        if (state.miRol === 'jugador' && !state.juegoEnCurso) {
+        
+        if (state.miRol === 'jugador' && !state.juegoEnCurso && !state.enPrevisualizacion) {
             let viendo = false; let bloqueada = false; let idActiva = null;
             t.forEach(tb => { 
                 if (tb.viendoPor.includes(socket.id)) { viendo = true; idActiva = tb.id; }
@@ -315,16 +429,62 @@ export function setupSocketClient(socket, callbacks) {
                 btnDesbloquear.style.display = bloqueada ? 'inline-block' : 'none';
             } else { contBotones.style.display = 'none'; }
         }
-        if (state.juegoEnCurso) {
+        
+        if (state.juegoEnCurso || state.enPrevisualizacion) {
             document.querySelectorAll('.tablilla').forEach(el => {
                 if(!el.classList.contains('bloqueada-mia') && state.miRol === 'jugador') el.style.display = 'none';
                 else if (state.miRol === 'espectador') el.style.display = 'none'; 
             });
             document.getElementById('botonesTablilla').style.display = 'none';
+            
+            if (state.enPrevisualizacion) {
+                ui.iniciarPrevisualizacion(state, callbacks.construirPanelEspectadorCb);
+            } else {
+                ui.prepararInterfazJuego(state, callbacks.construirPanelEspectadorCb);
+            }
         }
     });
 
-    socket.on('juego_iniciado', (info) => { state.estadoJugadores = info; ui.prepararInterfazJuego(state, construirPanelEspectadorCb); });
+    socket.on('juego_iniciado', (info) => { 
+        document.getElementById('pantallaResultados').classList.remove('activa');
+        document.getElementById('pantallaLobby').classList.add('activa');
+        
+        document.querySelectorAll('.carta').forEach(c => {
+            c.classList.remove('marcada', 'marcable-visual');
+            c.dataset.activa = "false";
+            c.style.cursor = "default";
+            const palomita = c.querySelector('.palomita');
+            if (palomita) palomita.remove();
+        });
+        
+        const pilaGriton = document.getElementById('pilaCartasGriton');
+        if (pilaGriton) pilaGriton.innerHTML = '';
+        const textoGriton = document.getElementById('textoCartaGriton');
+        if (textoGriton) textoGriton.textContent = '¡PREPARANDO...!';
+
+        state.misCartasMarcadas = 0;
+        const btnLoteriaRef = document.getElementById('btnLoteria');
+        if (btnLoteriaRef) btnLoteriaRef.disabled = true;
+
+        const modalTorneo = document.getElementById('modalEliminadoTorneo');
+        if (modalTorneo) modalTorneo.style.display = 'none';
+        
+        if (state.enPrevisualizacion) {
+            state.enPrevisualizacion = false;
+            document.getElementById('controlesPrevisualizacion').style.display = 'none';
+        }
+
+        // FIX MAESTRO: Retrasamos el ocultado del footer a 18 segundos (15s de prep + 3 de cortesía)
+        setTimeout(() => {
+            const footer = document.querySelector('.app-footer');
+            if (footer && state.juegoEnCurso) {
+                footer.classList.add('footer-oculto');
+            }
+        }, 15000);
+
+        state.estadoJugadores = info; 
+        ui.prepararInterfazJuego(state, construirPanelEspectadorCb); 
+    });
     
     socket.on('actualizar_texto_carta', (texto) => { 
         const cartaContenedor = document.getElementById('cartaActual'); 
@@ -347,6 +507,11 @@ export function setupSocketClient(socket, callbacks) {
             textoSpan = document.getElementById('textoCartaGriton');
         }
         
+        // FIX MAESTRO: Activamos la animación de la Obertura en el segundo 15
+        if (texto === "¡CORRE Y SE VA CON... 15") {
+            reproducirAnimacionMezcla();
+        }
+
         textoSpan.textContent = texto; 
     });
 
@@ -502,6 +667,20 @@ export function setupSocketClient(socket, callbacks) {
         }
     });
 
+    socket.on('torneo_eliminado', (datos) => {
+        const modal = document.getElementById('modalEliminadoTorneo');
+        const lugarUI = document.getElementById('lugarTorneoUI');
+        if (modal && lugarUI) {
+            lugarUI.textContent = `#${datos.lugar}`;
+            modal.style.display = 'flex';
+        }
+    });
+
+    socket.on('torneo_tick', (tiempo) => {
+        const span = document.getElementById('contadorTorneo');
+        if (span) span.textContent = tiempo;
+    });
+
     socket.on('iniciar_votacion', (datos) => {
         document.getElementById('nombreGanadorModal').textContent = datos.nombre; document.getElementById('modalVotacion').style.display = 'flex'; document.getElementById('tiempoVotacion').textContent = datos.tiempo;
         if(datos.foto) { document.getElementById('fotoGanadorModal').src = datos.foto; document.getElementById('fotoGanadorModal').style.display = 'block'; } else { document.getElementById('fotoGanadorModal').style.display = 'none'; }
@@ -538,48 +717,113 @@ export function setupSocketClient(socket, callbacks) {
     socket.on('regreso_al_lobby_exitoso', () => {
         sessionStorage.removeItem('loteria_layout'); 
 
-        const panelEsp = document.getElementById('panelEspectadorUI'); if(panelEsp) document.body.appendChild(panelEsp);
-        const btnChat = document.getElementById('btnAbrirChatMovil'); if(btnChat) document.body.appendChild(btnChat);
+        const footer = document.querySelector('.app-footer');
+        if (footer) {
+            footer.classList.remove('footer-oculto', 'footer-delay');
+        }
+
+        const panelEsp = document.getElementById('panelEspectadorUI'); 
+        if(panelEsp) document.body.appendChild(panelEsp);
+        
+        const btnChat = document.getElementById('btnAbrirChatMovil'); 
+        if(btnChat) document.body.appendChild(btnChat);
+        
+        const btnLoteria = document.getElementById('btnLoteria'); 
+        if(btnLoteria) document.body.appendChild(btnLoteria);
 
         const zonaGriton = document.querySelector('.zona-griton');
-        if(zonaGriton) { zonaGriton.style.setProperty('--griton-x', '0px'); zonaGriton.style.setProperty('--griton-y', '0px'); }
+        if(zonaGriton) { 
+            zonaGriton.style.setProperty('--griton-x', '0px'); 
+            zonaGriton.style.setProperty('--griton-y', '0px'); 
+        }
         
         const contenedorTabs = document.getElementById('contenedorTablillas');
-        if(contenedorTabs) { contenedorTabs.style.setProperty('--offset-x', '0px'); contenedorTabs.style.setProperty('--offset-y', '0px'); }
+        if(contenedorTabs) { 
+            contenedorTabs.style.setProperty('--offset-x', '0px'); 
+            contenedorTabs.style.setProperty('--offset-y', '0px'); 
+        }
         
-        if(panelEsp) { panelEsp.style.position = ''; panelEsp.style.left = ''; panelEsp.style.top = ''; panelEsp.style.right = ''; panelEsp.style.bottom = ''; panelEsp.style.transform = ''; panelEsp.style.margin = ''; }
+        if(panelEsp) { 
+            panelEsp.style.position = ''; 
+            panelEsp.style.left = ''; 
+            panelEsp.style.top = ''; 
+            panelEsp.style.right = ''; 
+            panelEsp.style.bottom = ''; 
+            panelEsp.style.transform = ''; 
+            panelEsp.style.margin = ''; 
+            panelEsp.style.zIndex = '';
+        }
 
-        state.juegoEnCurso = false; state.misCartasMarcadas = 0;
-        document.getElementById('cartaActual').innerHTML = TEXTO_LOBBY; document.getElementById('cartaActual').style.color = "";
-        document.getElementById('pantallaResultados').classList.remove('activa'); document.getElementById('pantallaLobby').classList.add('activa');
-        document.getElementById('pantallaLobby').classList.remove('mesa-activa');
+        state.juegoEnCurso = false; 
+        state.misCartasMarcadas = 0;
         
-        const btnLoteria = document.getElementById('btnLoteria'); btnLoteria.disabled = true; btnLoteria.style.display = 'none';
-        document.querySelector('.zona-griton').insertBefore(btnLoteria, document.getElementById('cartaActual'));
+        const cartaActual = document.getElementById('cartaActual');
+        if(cartaActual) {
+            cartaActual.innerHTML = TEXTO_LOBBY; 
+            cartaActual.style.color = "";
+        }
         
-        const header = document.querySelector('.header-sala'); const cajasListas = document.getElementById('cajasListas'); const panelConfig = document.getElementById('panelConfiguracion');
-        const columnaHerramientas = document.getElementById('herramientasSala'); const chat = document.getElementById('cajaChat');
+        document.getElementById('pantallaResultados')?.classList.remove('activa'); 
+        document.getElementById('pantallaLobby')?.classList.add('activa');
+        document.getElementById('pantallaLobby')?.classList.remove('mesa-activa');
+        
+        const btnLoteriaRef = document.getElementById('btnLoteria'); 
+        if (btnLoteriaRef) {
+            btnLoteriaRef.disabled = true; 
+            btnLoteriaRef.style.display = 'none';
+            if (zonaGriton && cartaActual) zonaGriton.insertBefore(btnLoteriaRef, cartaActual);
+        }
+        
+        const header = document.querySelector('.header-sala'); 
+        const cajasListas = document.getElementById('cajasListas'); 
+        const panelConfig = document.getElementById('panelConfiguracion');
+        const columnaHerramientas = document.getElementById('herramientasSala'); 
+        const chat = document.getElementById('cajaChat');
 
-        if(header) header.classList.remove('oculto-juego'); if(cajasListas) cajasListas.classList.remove('oculto-juego'); if(panelConfig) panelConfig.classList.remove('oculto-juego');
-        if(columnaHerramientas) columnaHerramientas.style.display = 'flex'; if(chat) chat.style.display = 'flex';
-        if(chat && columnaHerramientas) { chat.classList.remove('chat-juego'); columnaHerramientas.appendChild(chat); }
-
-        if(!state.configSala.sinEspectadores) document.getElementById('btnCambiarRol').style.display = 'inline-block'; 
-        document.getElementById('nombreTiempoReal').disabled = false;
-        document.getElementById('panelEspectadorUI').style.display = 'none'; 
-        document.getElementById('btnAbrirChatMovil').style.display = 'none'; document.getElementById('chatIngameContenedor').style.display = 'none';
+        if(header) header.classList.remove('oculto-juego'); 
+        if(cajasListas) cajasListas.classList.remove('oculto-juego'); 
+        if(panelConfig) panelConfig.classList.remove('oculto-juego');
         
-        const tituloEsp = document.getElementById('tituloEspectando'); if(tituloEsp) tituloEsp.style.display = 'none';
-        document.getElementById('contenedorEspectador').innerHTML = '';
+        if(columnaHerramientas) columnaHerramientas.style.display = 'flex'; 
+        if(chat) { 
+            chat.style.display = 'flex';
+            chat.classList.remove('chat-juego'); 
+            if(columnaHerramientas) columnaHerramientas.appendChild(chat); 
+        }
+
+        const btnCambiarRol = document.getElementById('btnCambiarRol');
+        if(btnCambiarRol && state.configSala && !state.configSala.sinEspectadores) {
+            btnCambiarRol.style.display = 'inline-block'; 
+        }
+        
+        const nombreTiempoReal = document.getElementById('nombreTiempoReal');
+        if(nombreTiempoReal) nombreTiempoReal.disabled = false;
+        
+        const btnAbrirChatMovil2 = document.getElementById('btnAbrirChatMovil');
+        if(btnAbrirChatMovil2) btnAbrirChatMovil2.style.display = 'none'; 
+        
+        const chatIngameContenedor = document.getElementById('chatIngameContenedor');
+        if(chatIngameContenedor) chatIngameContenedor.style.display = 'none';
+        
+        const tituloEsp = document.getElementById('tituloEspectando'); 
+        if(tituloEsp) tituloEsp.style.display = 'none';
+        
+        const contenedorEspectador = document.getElementById('contenedorEspectador');
+        if(contenedorEspectador) contenedorEspectador.innerHTML = '';
         
         if (state.soyAnfitrion) {
-            document.getElementById('btnIniciar').style.display = 'inline-block';
-            document.getElementById('panelConfiguracion').classList.add('es-host');
-            document.getElementById('controlesBot').style.display = 'block';
+            const btnIniciar = document.getElementById('btnIniciar');
+            if(btnIniciar) btnIniciar.style.display = 'inline-block';
+            if(panelConfig) panelConfig.classList.add('es-host');
+            const controlesBot = document.getElementById('controlesBot');
+            if(controlesBot) controlesBot.style.display = 'block';
         }
         
         const btnCreador = document.getElementById('contenedorBtnCreador');
         if(btnCreador && state.miRol === 'jugador') btnCreador.style.display = 'block';
+        
+        const contenedorPreview = document.getElementById('contenedorBtnPreview');
+        if(contenedorPreview) contenedorPreview.style.display = 'flex';
     });
     
     socket.on('actualizar_timer_inactividad', (segs) => {

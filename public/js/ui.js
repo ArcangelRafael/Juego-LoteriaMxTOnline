@@ -1,6 +1,254 @@
 import { CARTAS_LOTERIA } from './cartas.js';
 
 // public/js/ui.js
+
+let tutorialBalloons = [];
+let reqAnimFrameId = null;
+
+function updateBalloons() {
+    tutorialBalloons.forEach(item => {
+        if(!item.target) return;
+        const rect = item.target.getBoundingClientRect();
+        const bRect = item.balloon.getBoundingClientRect();
+        
+        if (rect.width === 0 && rect.height === 0) {
+            item.balloon.style.opacity = '0';
+            item.balloon.style.pointerEvents = 'none';
+            return;
+        } else {
+            item.balloon.style.opacity = '1';
+            item.balloon.style.pointerEvents = 'auto';
+        }
+
+        let top = 0, left = 0;
+        if (item.placement === 'top') {
+            top = rect.top - bRect.height - 12;
+            left = rect.left + (rect.width / 2) - (bRect.width / 2);
+        } else if (item.placement === 'bottom') {
+            top = rect.bottom + 12;
+            left = rect.left + (rect.width / 2) - (bRect.width / 2);
+        }
+        item.balloon.style.top = top + 'px';
+        item.balloon.style.left = left + 'px';
+    });
+    if (tutorialBalloons.length > 0) {
+        reqAnimFrameId = requestAnimationFrame(updateBalloons);
+    }
+}
+
+function crearGloboTutorial(targetEl, text, placement) {
+    if (!targetEl) return;
+    const b = document.createElement('div');
+    b.className = `tutorial-balloon ${placement}`;
+    b.innerHTML = `<span>${text}</span><button class="btn-ok-tutorial">OK</button>`;
+    document.body.appendChild(b);
+    
+    b.querySelector('.btn-ok-tutorial').addEventListener('pointerdown', (e) => {
+        e.stopPropagation(); e.preventDefault();
+        const idx = tutorialBalloons.findIndex(item => item.balloon === b);
+        if(idx !== -1) tutorialBalloons.splice(idx, 1);
+        b.remove();
+    });
+
+    tutorialBalloons.push({ balloon: b, target: targetEl, placement });
+}
+
+export function iniciarPrevisualizacion(state, contruirEspectadorCb) {
+    state.enPrevisualizacion = true;
+    document.getElementById('controlesPrevisualizacion').style.display = 'flex';
+    
+    document.querySelector('.header-sala')?.classList.add('oculto-juego');
+    document.getElementById('cajasListas')?.classList.add('oculto-juego');
+    document.getElementById('panelConfiguracion')?.classList.add('oculto-juego');
+    document.getElementById('pantallaLobby').classList.add('mesa-activa');
+    
+    setTimeout(() => {
+        const chat = document.getElementById('cajaChat');
+        if(chat) {
+            chat.classList.add('chat-juego');
+            document.getElementById('pantallaLobby').appendChild(chat);
+        }
+    }, 100);
+
+    let miTablilla = document.querySelector('.bloqueada-mia');
+    
+    if (!miTablilla && state.miRol === 'jugador') {
+        const dummyCont = document.createElement('div');
+        dummyCont.className = 'tablilla bloqueada-mia dummy-preview';
+        dummyCont.innerHTML = `
+            <div class="controles-superiores-tablilla">
+                <div class="resizer-handle" title="Arrastra para ajustar tamaño">⤡ TAMAÑO</div>
+                <div class="mover-handle" title="Arrastra para mover">✥ MOVER</div>
+            </div>
+            <div class="tablilla-header-container">
+                <h4>¡Tablilla de Ensayo!</h4>
+                <div class="contenedor-titulo-loteria"></div>
+            </div>
+            <div class="grid-cartas"></div>
+        `;
+        const grid = dummyCont.querySelector('.grid-cartas');
+        
+        if (!state.dummyCartas) {
+            state.dummyCartas = Object.values(CARTAS_LOTERIA).sort(() => 0.5 - Math.random()).slice(0, 16);
+        }
+
+        state.dummyCartas.forEach(infoCarta => {
+            const divC = document.createElement('div'); divC.className = 'carta';
+            divC.innerHTML = `<img src="${infoCarta.img}" class="img-carta-adentro"><div class="nombre-carta-tablilla">${infoCarta.nombre}</div>`;
+            grid.appendChild(divC);
+        });
+        document.getElementById('contenedorTablillas').appendChild(dummyCont);
+        miTablilla = dummyCont;
+    }
+
+    const panelEsp = document.getElementById('panelEspectadorUI');
+    const btnLoteria = document.getElementById('btnLoteria');
+    const btnChatMovil = document.getElementById('btnAbrirChatMovil');
+    
+    if(state.miRol === 'jugador' && miTablilla) {
+        if(btnLoteria) {
+            btnLoteria.style.display = 'inline-block';
+            const contenedorLoteria = miTablilla.querySelector('.contenedor-titulo-loteria');
+            if (contenedorLoteria) contenedorLoteria.appendChild(btnLoteria);
+        }
+        if(btnChatMovil) {
+            btnChatMovil.style.display = 'flex';
+            miTablilla.appendChild(btnChatMovil);
+        }
+        if(panelEsp) miTablilla.appendChild(panelEsp);
+    } else {
+        const lobbyContenedor = document.getElementById('pantallaLobby');
+        if (panelEsp && lobbyContenedor) {
+            lobbyContenedor.appendChild(panelEsp);
+            panelEsp.style.position = 'absolute';
+            panelEsp.style.bottom = '30px';
+            panelEsp.style.left = '50%';
+            panelEsp.style.transform = 'translateX(-50%)';
+            panelEsp.style.top = 'auto';
+            panelEsp.style.right = 'auto';
+            panelEsp.style.margin = '0';
+            panelEsp.style.zIndex = '9999';
+        }
+    }
+    if (panelEsp) panelEsp.style.display = 'block';
+
+    const cartaContenedor = document.getElementById('cartaActual'); 
+    const dummyCarta = CARTAS_LOTERIA['1']; 
+    if (dummyCarta && cartaContenedor) {
+        cartaContenedor.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
+                <span id="textoCartaGriton" style="font-size: 1.4em; font-weight: 900; z-index: 310; text-shadow: 0 4px 15px rgba(0,0,0,0.8); background: rgba(15,23,42,0.85); padding: 8px 25px; border-radius: 12px; color: #38bdf8; border: 1px solid rgba(255,255,255,0.1);">¡${dummyCarta.nombre}!</span>
+                <div class="griton-mesa-container">
+                    <div id="pilaCartasGriton" style="position: relative; width: 220px; height: 310px; z-index: 2;">
+                        <div class="carta-3d-container" style="--rot-final:0deg; --x-final:0px; --y-final:0px; animation: none; transform: scale(1);">
+                            <img src="${dummyCarta.img}" class="carta-cara carta-frente">
+                        </div>
+                    </div>
+                    <div id="mazoCartasGriton" style="position: relative; width: 220px; height: 310px; z-index: 1;">
+                        <img src="/assets/img/backards.webp" class="mazo-estatico" style="transform: rotate(-2deg) translate(2px, 2px);">
+                        <img src="/assets/img/backards.webp" class="mazo-estatico" style="transform: rotate(1deg) translate(-2px, -2px);">
+                        <img src="/assets/img/backards.webp" class="mazo-estatico">
+                    </div>
+                </div>
+            </div>`;
+    }
+    
+    document.querySelectorAll('.tablilla').forEach(el => {
+        if(!el.classList.contains('bloqueada-mia') && state.miRol === 'jugador') el.style.display = 'none';
+        else if (state.miRol === 'espectador') el.style.display = 'none'; 
+    });
+    
+    contruirEspectadorCb();
+
+    // FIX MAESTRO: Si la casilla Omitir Tutorial no está marcada, lanzamos la animación
+    const omitirTutorial = document.getElementById('checkOmitirTutorial')?.checked;
+
+    if (!omitirTutorial) {
+        setTimeout(() => {
+            const gritonText = document.getElementById('textoCartaGriton');
+            if (gritonText) gritonText.classList.add('tutorial-glow-griton');
+            if (miTablilla) miTablilla.classList.add('tutorial-glow-tablilla');
+
+            setTimeout(() => {
+                if (gritonText) gritonText.classList.remove('tutorial-glow-griton');
+                if (miTablilla) miTablilla.classList.remove('tutorial-glow-tablilla');
+            }, 6000);
+
+            tutorialBalloons.forEach(item => item.balloon.remove());
+            tutorialBalloons = [];
+            if(reqAnimFrameId) cancelAnimationFrame(reqAnimFrameId);
+
+            crearGloboTutorial(document.getElementById('textoCartaGriton'), "Mueve al griton desde el texto y acomodalo segun tu dispositivo", "top");
+            crearGloboTutorial(document.getElementById('btnLoteria'), "Este sera el boton para que cantes victoria una vez completes tu juego", "bottom");
+            if(miTablilla) {
+                crearGloboTutorial(miTablilla.querySelector('.resizer-handle'), "De aqui podras cambiar el tamaño de tu tablilla, hacerla mas grande o mas chica", "top");
+                crearGloboTutorial(miTablilla.querySelector('.mover-handle'), "De aqui podras mover toda tu tablilla y reubicarla a donde mejor te convengan", "top");
+            }
+            crearGloboTutorial(document.getElementById('btnAbrirChatMovil'), "Pulsa aqui para activar el chat durante el juego o enter si estas en pc", "top");
+            crearGloboTutorial(document.getElementById('panelEspectadorUI'), "Aqui podras activar la casilla para ver el juego de tus enemigos, ya sea de todos o solo de alguien en especifico. Tambien puedes ocultar este recuadro en pulsando sobre '-'", "top");
+            
+            updateBalloons();
+        }, 400);
+    }
+}
+
+export function cerrarPrevisualizacion(state) {
+    state.enPrevisualizacion = false;
+    state.dummyCartas = null; 
+    
+    tutorialBalloons.forEach(item => item.balloon.remove());
+    tutorialBalloons = [];
+    if(reqAnimFrameId) cancelAnimationFrame(reqAnimFrameId);
+    
+    const gritonText = document.getElementById('textoCartaGriton');
+    if (gritonText) gritonText.classList.remove('tutorial-glow-griton');
+    const miTab = document.querySelector('.bloqueada-mia');
+    if (miTab) miTab.classList.remove('tutorial-glow-tablilla');
+
+    document.getElementById('controlesPrevisualizacion').style.display = 'none';
+    document.getElementById('pantallaLobby').classList.remove('mesa-activa');
+    
+    document.querySelector('.header-sala')?.classList.remove('oculto-juego');
+    document.getElementById('cajasListas')?.classList.remove('oculto-juego');
+    document.getElementById('panelConfiguracion')?.classList.remove('oculto-juego');
+
+    const chat = document.getElementById('cajaChat');
+    const columnaHerramientas = document.getElementById('herramientasSala');
+    if (chat && columnaHerramientas) {
+        chat.classList.remove('chat-juego');
+        columnaHerramientas.appendChild(chat);
+    }
+
+    const dummy = document.querySelector('.dummy-preview');
+    if (dummy) dummy.remove();
+
+    const cartaActual = document.getElementById('cartaActual');
+    if(cartaActual) {
+        cartaActual.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; gap: 10px;">
+                <span>Selección y bloqueo de tablillas</span>
+                <span style="font-size: 16px; font-weight: normal; color: var(--text-muted);">Selecciona la tablilla de tu agrado y bloquéala antes que alguien más te la gane.</span>
+            </div>`;
+    }
+
+    document.querySelectorAll('.tablilla').forEach(el => el.style.display = 'block');
+    document.getElementById('contenedorEspectador').innerHTML = '';
+    
+    const panelEsp = document.getElementById('panelEspectadorUI');
+    if(panelEsp) {
+        document.body.appendChild(panelEsp);
+        panelEsp.style.position = '';
+        panelEsp.style.left = '';
+        panelEsp.style.top = '';
+        panelEsp.style.right = '';
+        panelEsp.style.bottom = '';
+        panelEsp.style.transform = '';
+        panelEsp.style.margin = '';
+        panelEsp.style.zIndex = '';
+        panelEsp.style.display = 'none';
+    }
+}
+
 export function mostrarModalError(msg, callbackRecarga = null) {
     document.getElementById('textoModalError').textContent = msg;
     document.getElementById('modalError').style.display = 'flex';
@@ -17,6 +265,17 @@ export function mostrarModalExpulsion(nombre, onConfirm) {
     document.getElementById('btnCancelarExpulsion').onclick = () => { document.getElementById('modalExpulsar').style.display = 'none'; };
 }
 
+export function mostrarModalDestruirLobby(onConfirm) {
+    document.getElementById('modalDestruirLobby').style.display = 'flex';
+    document.getElementById('btnConfirmarDestruir').onclick = () => { 
+        document.getElementById('modalDestruirLobby').style.display = 'none'; 
+        onConfirm(); 
+    };
+    document.getElementById('btnCancelarDestruir').onclick = () => { 
+        document.getElementById('modalDestruirLobby').style.display = 'none'; 
+    };
+}
+
 export function actualizarUIConfig(cfg, state) {
     state.configSala = cfg;
     if(cfg.velocidadGriton === 3000) document.querySelector('input[value="3"]').checked = true;
@@ -25,6 +284,9 @@ export function actualizarUIConfig(cfg, state) {
     
     document.getElementById('checkAyudaNinos').checked = cfg.ayudaNinos;
     document.getElementById('checkSinEspectadores').checked = cfg.sinEspectadores;
+    
+    const checkTorneo = document.getElementById('checkModoTorneo');
+    if (checkTorneo && cfg.modoTorneo !== undefined) checkTorneo.checked = cfg.modoTorneo;
 
     if(cfg.sinEspectadores) document.getElementById('btnCambiarRol').style.display = 'none';
     else if(!state.juegoEnCurso) document.getElementById('btnCambiarRol').style.display = 'inline-block';
@@ -39,7 +301,11 @@ export function initLobby(n, c, t, renderizarTablillasCb) {
     document.getElementById('pantallaLobby').classList.add('activa');
     document.getElementById('tituloSala').textContent = `Sala: ${n}`;
     document.getElementById('codigoSalaTexto').textContent = `Código: ${c}`;
-    renderizarTablillasCb(t);
+    
+    const contenedorPreview = document.getElementById('contenedorBtnPreview');
+    if(contenedorPreview) contenedorPreview.style.display = 'flex';
+
+    if (renderizarTablillasCb) renderizarTablillasCb(t);
 }
 
 export function actualizarListas(listas, state) {
@@ -54,9 +320,21 @@ export function actualizarListas(listas, state) {
     listas.jugadores.forEach(j => {
         let img = j.foto ? `<img src="${j.foto}" class="foto-perfil">` : '';
         let btnKick = (state.soyAnfitrion && j.id !== state.socketId) ? `<button class="btn-kick" data-id="${j.id}" data-nombre="${j.nombre}">Expulsar</button>` : '';
-        let esperando = (!j.enLobby && !j.isBot) ? '<span class="estado-esperando">(esperando)</span>' : '';
-        ulJ.innerHTML += `<li><span>${img}${j.nombre}${esperando} ${j.listo ? '<span class="listo-true"> (¡Listo!)</span>' : ''}</span> ${btnKick}</li>`;
+        
+        let textoAccion = '';
+        if (!j.enLobby && !j.isBot) {
+            textoAccion = '<span style="color:#fbbf24; font-size:11px; font-style:italic; margin-left:5px;">(Viendo resultados)</span>';
+        } else if (j.estadoLobby) {
+            textoAccion = `<span style="color:#38bdf8; font-size:11px; font-style:italic; margin-left:5px;">(${j.estadoLobby})</span>`;
+        } else if (!j.listo && !j.isBot) {
+            textoAccion = '<span style="color:#94a3b8; font-size:11px; font-style:italic; margin-left:5px;">(AFK)</span>';
+        }
+
+        let textoListo = j.listo ? '<span class="listo-true" style="margin-left:5px;">(¡Listo!)</span>' : '';
+
+        ulJ.innerHTML += `<li><span style="display:flex; align-items:center; flex-wrap:wrap;">${img}<span style="font-weight:600;">${j.nombre}</span>${textoAccion}${textoListo}</span> ${btnKick}</li>`;
     });
+
     ulE.innerHTML = '';
     listas.espectadores.forEach(e => {
         let img = e.foto ? `<img src="${e.foto}" class="foto-perfil">` : '';
@@ -74,6 +352,14 @@ export function prepararInterfazJuego(state, contruirEspectadorCb) {
     const inputNombre = document.getElementById('nombreTiempoReal'); if(inputNombre) inputNombre.disabled = true;
     const btnCreador = document.getElementById('contenedorBtnCreador'); if(btnCreador) btnCreador.style.display = 'none';
     
+    const contenedorPreview = document.getElementById('contenedorBtnPreview'); 
+    if (contenedorPreview) contenedorPreview.style.display = 'none';
+    
+    const btnSalirEsp = document.getElementById('btnSalirEspectador');
+    if (btnSalirEsp) {
+        btnSalirEsp.style.display = (state.miRol === 'espectador') ? 'inline-block' : 'none';
+    }
+
     const header = document.querySelector('.header-sala');
     const cajasListas = document.getElementById('cajasListas');
     const panelConfig = document.getElementById('panelConfiguracion');
@@ -91,6 +377,8 @@ export function prepararInterfazJuego(state, contruirEspectadorCb) {
         if(columnaHerramientas) columnaHerramientas.style.display = 'none';
     }, 100);
     
+    const panelEsp = document.getElementById('panelEspectadorUI');
+    
     if(state.miRol === 'jugador') {
         const miTablilla = document.querySelector('.bloqueada-mia');
         
@@ -104,22 +392,33 @@ export function prepararInterfazJuego(state, contruirEspectadorCb) {
         const btnChatMovil = document.getElementById('btnAbrirChatMovil');
         if(btnChatMovil && miTablilla) {
             btnChatMovil.style.display = 'flex';
-            miTablilla.appendChild(btnChatMovil); // Lo metemos en la tablilla para que se mueva con ella
+            miTablilla.appendChild(btnChatMovil);
         }
 
-        const panelEsp = document.getElementById('panelEspectadorUI');
         if(panelEsp && miTablilla) {
-            miTablilla.appendChild(panelEsp); // Lo metemos para que se mueva con ella
+            miTablilla.appendChild(panelEsp);
+        }
+    } else {
+        const lobbyContenedor = document.getElementById('pantallaLobby');
+        if (panelEsp && lobbyContenedor) {
+            lobbyContenedor.appendChild(panelEsp);
+            panelEsp.style.position = 'absolute';
+            panelEsp.style.bottom = '30px';
+            panelEsp.style.left = '50%';
+            panelEsp.style.transform = 'translateX(-50%)';
+            panelEsp.style.top = 'auto';
+            panelEsp.style.right = 'auto';
+            panelEsp.style.margin = '0';
+            panelEsp.style.zIndex = '9999';
         }
     }
     
-    // Limpiamos los bordes verdes de todas las tablillas (bloqueada-mia)
     document.querySelectorAll('.tablilla').forEach(el => {
         if(!el.classList.contains('bloqueada-mia') && state.miRol === 'jugador') el.style.display = 'none';
-        else if (state.miRol === 'espectador') el.style.display = 'none';
-        // Ya no removemos bloqueada-mia, la necesitamos para el diseño
+        else if (state.miRol === 'espectador') el.style.display = 'none'; 
     });
-    contruirEspectadorCb();
+    
+    if(contruirEspectadorCb) contruirEspectadorCb();
 }
 
 export function mostrarResultados(datos) {
@@ -130,13 +429,59 @@ export function mostrarResultados(datos) {
     document.getElementById('btnAbrirChatMovil').style.display = 'none';
     document.getElementById('chatIngameContenedor').style.display = 'none';
 
+    const footer = document.querySelector('.app-footer');
+    if (footer) footer.classList.remove('footer-oculto', 'footer-delay');
+
     const ranking = datos.ranking; const stats = datos.estadisticas;
     
-    if(ranking.length > 0 && ranking[0].marcas === 16) {
-        let imgG = ranking[0].foto ? `<img src="${ranking[0].foto}" class="foto-ganador-oro">` : '';
-        document.getElementById('ganadorAbsolutoTexto').innerHTML = `${imgG} <h2 style="margin-top:0;">¡Felicidades, ${ranking[0].nombre}!</h2>`;
-    } else {
-        document.getElementById('ganadorAbsolutoTexto').innerHTML = "<h2>¡Partida finalizada sin Lotería plena!</h2>";
+    const btnVolver = document.getElementById('btnVolverLobby');
+    const tituloTorneo = document.getElementById('tituloTorneoResultados');
+    const txtGanadorAbsoluto = document.getElementById('ganadorAbsolutoTexto');
+    const txtGanadorTorneo = document.getElementById('ganadorTorneoTexto');
+
+    if (datos.torneoFinal) {
+        if (txtGanadorAbsoluto) txtGanadorAbsoluto.style.display = 'none';
+        if (tituloTorneo) tituloTorneo.style.display = 'none';
+        if (btnVolver) btnVolver.style.display = 'none';
+        
+        if (txtGanadorTorneo) {
+            let imgG = datos.ganador.foto ? `<img src="${datos.ganador.foto}" class="foto-ganador-oro">` : '';
+            txtGanadorTorneo.innerHTML = `<h2>🏆 ¡FELICIDADES AL GANADOR DEL TORNEO! 🏆</h2>${imgG}<h3 style="margin-top:0;">${datos.ganador.nombre}</h3>`;
+            txtGanadorTorneo.style.display = 'block';
+        }
+    } 
+    else if (datos.torneo) {
+        if (txtGanadorTorneo) txtGanadorTorneo.style.display = 'none';
+        if (txtGanadorAbsoluto) txtGanadorAbsoluto.style.display = 'block';
+        if (btnVolver) btnVolver.style.display = 'none';
+        
+        if (tituloTorneo) {
+            tituloTorneo.style.display = 'block';
+            const cont = document.getElementById('contadorTorneo');
+            if (cont) cont.textContent = datos.tiempo;
+        }
+
+        let imgE = datos.eliminado.foto ? `<img src="${datos.eliminado.foto}" style="width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; margin-right: 8px; border: 2px solid #ef4444; object-fit: cover; box-shadow: 0 0 10px rgba(239,68,68,0.6);">` : '';
+
+        if(ranking.length > 0 && ranking[0].marcas === 16) {
+            let imgG = ranking[0].foto ? `<img src="${ranking[0].foto}" class="foto-ganador-oro">` : '';
+            document.getElementById('ganadorAbsolutoTexto').innerHTML = `${imgG} <h2 style="margin-top:0;">¡Felicidades, ${ranking[0].nombre}!</h2><div class="text-danger" style="margin-top:-10px; display:flex; align-items:center; justify-content:center; font-weight:bold;">¡${imgE}${datos.eliminado.nombre} ha sido eliminado del torneo!</div>`;
+        } else {
+            document.getElementById('ganadorAbsolutoTexto').innerHTML = `<h2>¡Nadie cantó lotería!</h2><div class="text-danger" style="display:flex; align-items:center; justify-content:center; font-weight:bold;">¡${imgE}${datos.eliminado.nombre} ha sido eliminado por menor puntuación!</div>`;
+        }
+    } 
+    else {
+        if (tituloTorneo) tituloTorneo.style.display = 'none';
+        if (txtGanadorTorneo) txtGanadorTorneo.style.display = 'none';
+        if (txtGanadorAbsoluto) txtGanadorAbsoluto.style.display = 'block';
+        if (btnVolver) btnVolver.style.display = 'inline-block';
+
+        if(ranking.length > 0 && ranking[0].marcas === 16) {
+            let imgG = ranking[0].foto ? `<img src="${ranking[0].foto}" class="foto-ganador-oro">` : '';
+            document.getElementById('ganadorAbsolutoTexto').innerHTML = `${imgG} <h2 style="margin-top:0;">¡Felicidades, ${ranking[0].nombre}!</h2>`;
+        } else {
+            document.getElementById('ganadorAbsolutoTexto').innerHTML = "<h2>¡Partida finalizada sin Lotería plena!</h2>";
+        }
     }
 
     const ul = document.getElementById('listaRankingFinal'); ul.innerHTML = '';
@@ -189,10 +534,19 @@ export function mostrarResultados(datos) {
     const cajaS = document.getElementById('cajaAnalisisGlobal');
     let msjRapido = stats.rapido.nombre ? `${stats.rapido.nombre} (${(stats.rapido.ms / 1000).toFixed(2)}s)` : "Nadie";
     let msjLento = stats.lento.nombre ? `${stats.lento.nombre} (${(stats.lento.ms / 1000).toFixed(2)}s)` : "Nadie";
-    let msjRobo = stats.robo && stats.robo.victimas.length > 0 ? `<p style="color:gold;"><b>Robo de victoria:</b> ${stats.robo.ganador} se la robó por reflejos a ${stats.robo.victimas.join(', ')}</p>` : '';
-    let msjDistraido = stats.distraido && stats.distraido.nombre ? `<p style="color:coral;"><b>Más distraído:</b> ${stats.distraido.nombre} (se le pasaron ${stats.distraido.cantidad} cartas)</p>` : '';
+    
+    let maxPerdidas = 0;
+    ranking.forEach(j => {
+        let p = (j.historialPerdidas?.flat().length || 0) + (j.perdidas?.length || 0);
+        if (p > maxPerdidas) maxPerdidas = p;
+    });
+    let distraidos = ranking.filter(j => ((j.historialPerdidas?.flat().length || 0) + (j.perdidas?.length || 0)) === maxPerdidas).map(j => j.nombre);
+    let msjDistraido = maxPerdidas > 0 ? `<p style="color:coral; margin: 8px 0;"><b>Más distraído(s):</b> ${distraidos.join(', ')} (se les pasaron ${maxPerdidas} cartas)</p>` : '';
 
-    cajaS.innerHTML = `<h3>Análisis General de la Partida</h3><p>El click más rápido fue de: <b>${msjRapido}</b></p><p>El click más lento fue de: <b>${msjLento}</b></p>${msjRobo}${msjDistraido}`;
+    let victimasRobo = ranking.filter((j, idx) => idx > 0 && j.marcas === 16).map(j => j.nombre);
+    let msjRobo = victimasRobo.length > 0 ? `<p style="color:gold; margin: 8px 0;"><b>Robo de victoria:</b> ${ranking[0].nombre} se la robó por reflejos a ${victimasRobo.join(', ')}</p>` : '';
+
+    cajaS.innerHTML = `<h3>Análisis General de la Partida</h3><p style="margin: 8px 0;">El click más rápido fue de: <b>${msjRapido}</b></p><p style="margin: 8px 0;">El click más lento fue de: <b>${msjLento}</b></p>${msjRobo}${msjDistraido}`;
 }
 
 export function pintarMensajeChat(datos) {
